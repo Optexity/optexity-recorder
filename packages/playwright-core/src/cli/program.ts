@@ -70,6 +70,8 @@ commandWithOpenOptions('codegen [url]', 'open page and generate code for user ac
       ['-o, --output <file name>', 'saves the generated script to a file'],
       ['--target <language>', `language to generate, one of javascript, playwright-test, python, python-async, python-pytest, csharp, csharp-mstest, csharp-nunit, java, java-junit`, codegenId()],
       ['--test-id-attribute <attributeName>', 'use the specified attribute to generate data test ID selectors'],
+      ['--content-dir <dir>', 'directory to save the generated content'],
+      ['--js_script <file name>', 'js_script to be executed in the browser'],
     ]).action(function(url, options) {
   codegen(options, url).catch(logErrorAndExit);
 }).addHelpText('afterAll', `
@@ -578,8 +580,8 @@ async function open(options: Options, url: string | undefined, language: string)
   await openPage(context, url);
 }
 
-async function codegen(options: Options & { target: string, output?: string, testIdAttribute?: string }, url: string | undefined) {
-  const { target: language, output: outputFile, testIdAttribute: testIdAttributeName } = options;
+async function codegen(options: Options & { target: string, output?: string, testIdAttribute?: string, contentDir?: string, js_script?: string }, url: string | undefined) {
+  const { target: language, output: outputFile, testIdAttribute: testIdAttributeName, contentDir: contentDir, js_script: js_script } = options;
   const tracesDir = path.join(os.tmpdir(), `playwright-recorder-trace-${Date.now()}`);
   const { context, launchOptions, contextOptions } = await launchContext(options, {
     headless: !!process.env.PWTEST_CLI_HEADLESS,
@@ -593,9 +595,11 @@ async function codegen(options: Options & { target: string, output?: string, tes
     contextOptions,
     device: options.device,
     saveStorage: options.saveStorage,
-    mode: 'recording',
+    mode: 'inspecting',
     testIdAttributeName,
     outputFile: outputFile ? path.resolve(outputFile) : undefined,
+    contentDir: contentDir ? path.resolve(contentDir) : undefined,
+    js_script: js_script ? path.resolve(js_script) : undefined,
     handleSIGINT: false,
   });
   await openPage(context, url);

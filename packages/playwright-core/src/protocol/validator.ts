@@ -1029,6 +1029,8 @@ scheme.BrowserContextEnableRecorderParams = tObject({
   outputFile: tOptional(tString),
   handleSIGINT: tOptional(tBoolean),
   omitCallTracking: tOptional(tBoolean),
+  contentDir: tOptional(tString),
+  js_script: tOptional(tString),
 });
 scheme.BrowserContextEnableRecorderResult = tOptional(tObject({}));
 scheme.BrowserContextNewCDPSessionParams = tObject({

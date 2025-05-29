@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import fs from 'fs';
+
 import { sanitizeDeviceOptions, toClickOptionsForSourceCode, toKeyboardModifiers, toSignalMap } from './language';
 import { asLocator, escapeWithQuotes } from '../../utils';
 import { deviceDescriptors } from '../deviceDescriptors';
@@ -28,11 +30,13 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
   name: string;
   highlighter = 'javascript' as Language;
   private _isTest: boolean;
+  private _contentDir: string | null;
 
   constructor(isTest: boolean) {
     this.id = isTest ? 'playwright-test' : 'javascript';
     this.name = isTest ? 'Test Runner' : 'Library';
     this._isTest = isTest;
+    this._contentDir = null;
   }
 
   generateAction(actionInContext: actions.ActionInContext): string {
@@ -43,36 +47,56 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
     const pageAlias = actionInContext.frame.pageAlias;
     const formatter = new JavaScriptFormatter(2);
 
-    if (action.name === 'openPage') {
-      formatter.add(`const ${pageAlias} = await context.newPage();`);
-      if (action.url && action.url !== 'about:blank' && action.url !== 'chrome://newtab/')
-        formatter.add(`await ${pageAlias}.goto(${quote(action.url)});`);
-      return formatter.format();
+    const shouldMerge = actionInContext.shouldMerge ? actionInContext.shouldMerge : false;
+    const recording_complete = action.name === 'completeRecording' ? true : false;
+    const comment = ` // {"uuid": "${actionInContext.uuid}" , "merge_with_previous": "${shouldMerge}" , "recording_complete": "${recording_complete}"}`
+
+    if (action.name === 'completeRecording') {
+      formatter.add(comment);
+    } else {
+
+      if (action.name === 'openPage') {
+        formatter.add(`const ${pageAlias} = await context.newPage();`);
+        if (action.url && action.url !== 'about:blank' && action.url !== 'chrome://newtab/')
+          formatter.add(`await ${pageAlias}.goto(${quote(action.url)});`);
+        return formatter.format();
+      }
+
+      const locators = actionInContext.frame.framePath.map(selector => `.${this._asLocator(selector)}.contentFrame()`);
+      const subject = `${pageAlias}${locators.join('')}`;
+      const signals = toSignalMap(action);
+
+      if (signals.dialog) {
+        formatter.add(`  ${pageAlias}.once('dialog', dialog => {
+      console.log(\`Dialog message: $\{dialog.message()}\`);
+      dialog.dismiss().catch(() => {});
+    });`);
+      }
+
+      if (signals.popup)
+        formatter.add(`const ${signals.popup.popupAlias}Promise = ${pageAlias}.waitForEvent('popup');`);
+      if (signals.download)
+        formatter.add(`const download${signals.download.downloadAlias}Promise = ${pageAlias}.waitForEvent('download');`);
+
+      let code = wrapWithStep(actionInContext.description, this._generateActionCall(subject, actionInContext));
+
+      if (signals.popup)
+        formatter.add(`const ${signals.popup.popupAlias} = await ${signals.popup.popupAlias}Promise;`);
+      if (signals.download)
+        formatter.add(`const download${signals.download.downloadAlias} = await download${signals.download.downloadAlias}Promise;`);
+      code = code + comment;
+      formatter.add(code);
+      // if (actionInContext.uuid && actionInContext.action.name) {
+      //   console.log('Inside generateAction python: ' + actionInContext.action.name + ' ' + actionInContext.uuid);
+      // }
     }
 
-    const locators = actionInContext.frame.framePath.map(selector => `.${this._asLocator(selector)}.contentFrame()`);
-    const subject = `${pageAlias}${locators.join('')}`;
-    const signals = toSignalMap(action);
-
-    if (signals.dialog) {
-      formatter.add(`  ${pageAlias}.once('dialog', dialog => {
-    console.log(\`Dialog message: $\{dialog.message()}\`);
-    dialog.dismiss().catch(() => {});
-  });`);
+    if (this._contentDir && actionInContext.uuid && !actionInContext.shouldMerge) {
+      if (actionInContext.content && !fs.existsSync(this._contentDir + '/' + actionInContext.uuid + '.html'))
+        fs.writeFileSync(this._contentDir + '/' + actionInContext.uuid + '.html', actionInContext.content);
+      if (actionInContext.eval_page && !fs.existsSync(this._contentDir + '/' + actionInContext.uuid + '.json'))
+        fs.writeFileSync(this._contentDir + '/' + actionInContext.uuid + '.json', JSON.stringify(actionInContext.eval_page, null, 2));
     }
-
-    if (signals.popup)
-      formatter.add(`const ${signals.popup.popupAlias}Promise = ${pageAlias}.waitForEvent('popup');`);
-    if (signals.download)
-      formatter.add(`const download${signals.download.downloadAlias}Promise = ${pageAlias}.waitForEvent('download');`);
-
-    formatter.add(wrapWithStep(actionInContext.description, this._generateActionCall(subject, actionInContext)));
-
-    if (signals.popup)
-      formatter.add(`const ${signals.popup.popupAlias} = await ${signals.popup.popupAlias}Promise;`);
-    if (signals.download)
-      formatter.add(`const download${signals.download.downloadAlias} = await download${signals.download.downloadAlias}Promise;`);
-
     return formatter.format();
   }
 
@@ -130,6 +154,7 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
   }
 
   generateHeader(options: LanguageGeneratorOptions): string {
+    this._contentDir = options.contentDir || null;
     if (this._isTest)
       return this.generateTestHeader(options);
     return this.generateStandaloneHeader(options);

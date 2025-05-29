@@ -1296,6 +1296,8 @@ BrowserContext:
         outputFile: string?
         handleSIGINT: boolean?
         omitCallTracking: boolean?
+        contentDir: string?
+        js_script: string?
 
     newCDPSession:
       parameters:

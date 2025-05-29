@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import fs from 'fs';
+
 import { sanitizeDeviceOptions, toClickOptionsForSourceCode, toKeyboardModifiers, toSignalMap } from './language';
 import { asLocator, escapeWithQuotes, toSnakeCase } from '../../utils';
 import { deviceDescriptors } from '../deviceDescriptors';
@@ -32,6 +34,7 @@ export class PythonLanguageGenerator implements LanguageGenerator {
   private _asyncPrefix: '' | 'async ';
   private _isAsync: boolean;
   private _isPyTest: boolean;
+  private _contentDir: string | null;
 
   constructor(isAsync: boolean, isPyTest: boolean) {
     this.id = isPyTest ? 'python-pytest' : (isAsync ? 'python-async' : 'python');
@@ -40,47 +43,68 @@ export class PythonLanguageGenerator implements LanguageGenerator {
     this._isPyTest = isPyTest;
     this._awaitPrefix = isAsync ? 'await ' : '';
     this._asyncPrefix = isAsync ? 'async ' : '';
+    this._contentDir = null;
   }
 
   generateAction(actionInContext: actions.ActionInContext): string {
+    // console.log("Inside generateAction python", actionInContext);
     const action = actionInContext.action;
     if (this._isPyTest && (action.name === 'openPage' || action.name === 'closePage'))
       return '';
 
     const pageAlias = actionInContext.frame.pageAlias;
     const formatter = new PythonFormatter(4);
+    const shouldMerge = actionInContext.shouldMerge ? actionInContext.shouldMerge : false;
+    const recording_complete = action.name === 'completeRecording' ? true : false;
+    const comment = ` # {"uuid": "${actionInContext.uuid}" , "merge_with_previous": "${shouldMerge}" , "recording_complete": "${recording_complete}"}`
 
-    if (action.name === 'openPage') {
-      formatter.add(`${pageAlias} = ${this._awaitPrefix}context.new_page()`);
-      if (action.url && action.url !== 'about:blank' && action.url !== 'chrome://newtab/')
-        formatter.add(`${this._awaitPrefix}${pageAlias}.goto(${quote(action.url)})`);
-      return formatter.format();
-    }
+    if (action.name === 'completeRecording') {
+      formatter.add(comment);
+    } else {
 
-    const locators = actionInContext.frame.framePath.map(selector => `.${this._asLocator(selector)}.content_frame`);
-    const subject = `${pageAlias}${locators.join('')}`;
-    const signals = toSignalMap(action);
-
-    if (signals.dialog)
-      formatter.add(`  ${pageAlias}.once("dialog", lambda dialog: dialog.dismiss())`);
-
-    let code = `${this._awaitPrefix}${this._generateActionCall(subject, actionInContext)}`;
-
-    if (signals.popup) {
-      code = `${this._asyncPrefix}with ${pageAlias}.expect_popup() as ${signals.popup.popupAlias}_info {
-        ${code}
+      if (action.name === 'openPage') {
+        formatter.add(`${pageAlias} = ${this._awaitPrefix}context.new_page()`);
+        if (action.url && action.url !== 'about:blank' && action.url !== 'chrome://newtab/')
+          formatter.add(`${this._awaitPrefix}${pageAlias}.goto(${quote(action.url)})`);
+        return formatter.format();
       }
-      ${signals.popup.popupAlias} = ${this._awaitPrefix}${signals.popup.popupAlias}_info.value`;
-    }
 
-    if (signals.download) {
-      code = `${this._asyncPrefix}with ${pageAlias}.expect_download() as download${signals.download.downloadAlias}_info {
-        ${code}
+      const locators = actionInContext.frame.framePath.map(selector => `.${this._asLocator(selector)}.content_frame`);
+      const subject = `${pageAlias}${locators.join('')}`;
+      const signals = toSignalMap(action);
+
+      if (signals.dialog)
+        formatter.add(`  ${pageAlias}.once("dialog", lambda dialog: dialog.dismiss())`);
+
+      let code = `${this._awaitPrefix}${this._generateActionCall(subject, actionInContext)}`;
+
+      if (signals.popup) {
+        code = `${this._asyncPrefix}with ${pageAlias}.expect_popup() as ${signals.popup.popupAlias}_info {
+          ${code}
+        }
+        ${signals.popup.popupAlias} = ${this._awaitPrefix}${signals.popup.popupAlias}_info.value`;
       }
-      download${signals.download.downloadAlias} = ${this._awaitPrefix}download${signals.download.downloadAlias}_info.value`;
+
+      if (signals.download) {
+        code = `${this._asyncPrefix}with ${pageAlias}.expect_download() as download${signals.download.downloadAlias}_info {
+          ${code}
+        }
+        download${signals.download.downloadAlias} = ${this._awaitPrefix}download${signals.download.downloadAlias}_info.value`;
+      }
+      code = code + comment;
+
+      formatter.add(code);
+    // if (actionInContext.uuid && actionInContext.action.name) {
+      //   console.log('Inside generateAction python: ' + actionInContext.action.name + ' ' + actionInContext.uuid);
+      // }
     }
 
-    formatter.add(code);
+    if (this._contentDir && actionInContext.uuid && !actionInContext.shouldMerge) {
+      if (actionInContext.content && !fs.existsSync(this._contentDir + '/' + actionInContext.uuid + '.html'))
+        fs.writeFileSync(this._contentDir + '/' + actionInContext.uuid + '.html', actionInContext.content);
+      if (actionInContext.eval_page && !fs.existsSync(this._contentDir + '/' + actionInContext.uuid + '.json'))
+        fs.writeFileSync(this._contentDir + '/' + actionInContext.uuid + '.json', JSON.stringify(actionInContext.eval_page, null, 2));
+    }
 
     return formatter.format();
   }
@@ -137,6 +161,7 @@ export class PythonLanguageGenerator implements LanguageGenerator {
   }
 
   generateHeader(options: LanguageGeneratorOptions): string {
+    this._contentDir = options.contentDir || null;
     const formatter = new PythonFormatter();
     const recordHar = options.contextOptions.recordHar;
     if (this._isPyTest) {

@@ -73,12 +73,17 @@ export async function frameForAction(pageAliases: Map<Page, string>, actionInCon
 }
 
 export function collapseActions(actions: actions.ActionInContext[]): actions.ActionInContext[] {
+  // This function collapses actions that can be merged into one.
+  // Example two consecutive fills to the same selector should be merged into one.
   const result: actions.ActionInContext[] = [];
   for (const action of actions) {
     const lastAction = result[result.length - 1];
     const isSameAction = lastAction && lastAction.action.name === action.action.name && lastAction.frame.pageAlias === action.frame.pageAlias && lastAction.frame.framePath.join('|') === action.frame.framePath.join('|');
     const isSameSelector = lastAction && 'selector' in lastAction.action && 'selector' in action.action && action.action.selector === lastAction.action.selector;
-    const shouldMerge = isSameAction && (action.action.name === 'navigate' || (action.action.name === 'fill' && isSameSelector));
+    const shouldMergeOriginal = isSameAction && (action.action.name === 'navigate' || (action.action.name === 'fill' && isSameSelector));
+    if (shouldMergeOriginal)
+      action.shouldMerge = true;
+    const shouldMerge = isSameAction && (action.action.name === 'navigate');
     if (!shouldMerge) {
       result.push(action);
       continue;

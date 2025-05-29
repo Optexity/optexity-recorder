@@ -1,3 +1,38 @@
+# Optexity Playwright Development Setup
+Clone the repo and run the following on local
+
+```bash
+git remote add upstream https://github.com/microsoft/playwright.git
+```
+
+Then running the following should confirm
+```
+➜  playwright git:(main) git remote -v
+origin  git@github.com:Optexity/playwright.git (fetch)
+origin  git@github.com:Optexity/playwright.git (push)
+upstream        https://github.com/microsoft/playwright.git (fetch)
+upstream        https://github.com/microsoft/playwright.git (push)
+```
+
+To pull from microsoft playwright
+```bash
+git checkout main
+git pull upstream main
+git push origin main
+```
+
+To merge to playwright_optexity branch
+```bash
+git checkout playwright_optexity
+git merge main
+```
+
+To develop a new branch from playwright tag
+```bash
+git fetch upstream --tags
+git checkout -b optexity-v1.52.0 v1.52.0
+```
+
 # 🎭 Playwright
 
 [![npm version](https://img.shields.io/npm/v/playwright.svg)](https://www.npmjs.com/package/playwright) <!-- GEN:chromium-version-badge -->[![Chromium version](https://img.shields.io/badge/chromium-136.0.7103.25-blue.svg?logo=google-chrome)](https://www.chromium.org/Home)<!-- GEN:stop --> <!-- GEN:firefox-version-badge -->[![Firefox version](https://img.shields.io/badge/firefox-137.0-blue.svg?logo=firefoxbrowser)](https://www.mozilla.org/en-US/firefox/new/)<!-- GEN:stop --> <!-- GEN:webkit-version-badge -->[![WebKit version](https://img.shields.io/badge/webkit-18.4-blue.svg?logo=safari)](https://webkit.org/)<!-- GEN:stop --> [![Join Discord](https://img.shields.io/badge/join-discord-infomational)](https://aka.ms/playwright/discord)
