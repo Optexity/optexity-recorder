@@ -380,7 +380,7 @@ class RecordActionTool implements RecorderTool {
     }
 
     if (isRangeInput(target)) {
-      this._recorder.recordAction({
+      this._performAction({
         name: 'fill',
         // must use hoveredModel instead of activeModel for it to work in webkit
         selector: this._hoveredModel!.selector,
@@ -397,14 +397,16 @@ class RecordActionTool implements RecorderTool {
       }
 
       // Non-navigating actions are simply recorded by Playwright.
-      if (this._consumedDueWrongTarget(event))
-        return;
-      this._recorder.recordAction({
+      // if (this._actionInProgress(event))
+      //   return;
+      this._performAction({
         name: 'fill',
         selector: this._activeModel!.selector,
         signals: [],
         text: target.isContentEditable ? target.innerText : (target as HTMLInputElement).value,
       });
+      if (this._consumedDueWrongTarget(event))
+        return;
     }
 
     if (target.nodeName === 'SELECT') {
@@ -494,6 +496,7 @@ class RecordActionTool implements RecorderTool {
   }
 
   private _actionInProgress(event: Event): boolean {
+    // Maybe this function can prevent infinite loop
     // If Playwright is performing action for us, bail.
     const isKeyEvent = event instanceof KeyboardEvent;
     const isMouseOrPointerEvent = event instanceof MouseEvent || event instanceof PointerEvent;
@@ -502,6 +505,8 @@ class RecordActionTool implements RecorderTool {
         return true;
       if (isMouseOrPointerEvent && (action.name === 'click' || action.name === 'check' || action.name === 'uncheck'))
         return true;
+      // if (isKeyEvent && action.name === 'fill' && event.key === action.text)
+      //   return true;
     }
 
     // Consume event if action is not being executed.
@@ -672,6 +677,7 @@ class TextAssertionTool implements RecorderTool {
   }
 
   private _generateAction(): actions.AssertAction | null {
+    // console.log('Generating action for element', this._hoverHighlight?.elements[0], 'with kind', this._kind);
     this._textCache.clear();
     const target = this._hoverHighlight?.elements[0];
     if (!target)
@@ -809,6 +815,7 @@ class Overlay {
   private _assertTextToggle: HTMLElement;
   private _assertValuesToggle: HTMLElement;
   private _assertSnapshotToggle: HTMLElement;
+  private _completeRecordingToggle: HTMLElement;
   private _offsetX = 0;
   private _dragState: { offsetX: number, dragStart: { x: number, y: number } } | undefined;
   private _measure: { width: number, height: number } = { width: 0, height: 0 };
@@ -860,6 +867,12 @@ class Overlay {
     this._assertSnapshotToggle.appendChild(this._recorder.document.createElement('x-div'));
     toolsListElement.appendChild(this._assertSnapshotToggle);
 
+    this._completeRecordingToggle = this._recorder.document.createElement('x-pw-tool-item');
+    this._completeRecordingToggle.title = 'Complete recording';
+    this._completeRecordingToggle.classList.add('complete');
+    this._completeRecordingToggle.appendChild(this._recorder.document.createElement('x-div'));
+    toolsListElement.appendChild(this._completeRecordingToggle);
+
     this._updateVisualPosition();
     this._refreshListeners();
   }
@@ -906,6 +919,9 @@ class Overlay {
       addEventListener(this._assertSnapshotToggle, 'click', () => {
         if (!this._assertSnapshotToggle.classList.contains('disabled'))
           this._recorder.setMode(this._recorder.state.mode === 'assertingSnapshot' ? 'recording' : 'assertingSnapshot');
+      }),
+      addEventListener(this._completeRecordingToggle, 'click', () => {
+        this._recorder.completeRecording();
       }),
     ];
   }
@@ -1334,6 +1350,14 @@ export class Recorder {
 
   setMode(mode: Mode) {
     void this._delegate.setMode?.(mode);
+  }
+
+  completeRecording() {
+    const completeRecordingAction: actions.CompleteRecordingAction = {
+      name: 'completeRecording',
+      signals: [],
+    };
+    void this._delegate.recordAction?.(completeRecordingAction);
   }
 
   async performAction(action: actions.PerformOnRecordAction) {

@@ -65,6 +65,7 @@ export class RecorderCollection extends EventEmitter {
   }
 
   private async _addAction(actionInContext: actions.ActionInContext, callback?: () => Promise<void>) {
+    // console.log('recorder _addAction', actionInContext);
     if (!this._enabled)
       return;
     if (actionInContext.action.name === 'openPage' || actionInContext.action.name === 'closePage') {
@@ -79,7 +80,7 @@ export class RecorderCollection extends EventEmitter {
     actionInContext.endTime = monotonicTime();
   }
 
-  signal(pageAlias: string, frame: Frame, signal: Signal) {
+  signal(pageAlias: string, frame: Frame, signal: Signal, content: string, eval_page: { [key: string]: any }) {
     if (!this._enabled)
       return;
 
@@ -97,6 +98,7 @@ export class RecorderCollection extends EventEmitter {
         generateGoto = true;
 
       if (generateGoto) {
+        const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         this.addRecordedAction({
           frame: {
             pageAlias,
@@ -109,6 +111,9 @@ export class RecorderCollection extends EventEmitter {
           },
           startTime: timestamp,
           endTime: timestamp,
+          uuid: uuid,
+          content: content,
+          eval_page: eval_page,
         });
       }
       return;

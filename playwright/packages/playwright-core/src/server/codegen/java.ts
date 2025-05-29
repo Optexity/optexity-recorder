@@ -48,6 +48,8 @@ export class JavaLanguageGenerator implements LanguageGenerator {
 
   generateAction(actionInContext: actions.ActionInContext): string {
     const action = actionInContext.action;
+    if (action.name === 'completeRecording')
+      return '';
     const pageAlias = actionInContext.frame.pageAlias;
     const offset = this._mode === 'junit' ? 4 : 6;
     const formatter = new JavaScriptFormatter(offset);

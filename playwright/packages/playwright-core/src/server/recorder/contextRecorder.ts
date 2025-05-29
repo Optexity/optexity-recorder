@@ -15,6 +15,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { readFileSync } from 'fs';
 
 import { RecorderCollection } from './recorderCollection';
 import * as recorderSource from '../../generated/pollingRecorderSource';
@@ -57,6 +58,7 @@ export class ContextRecorder extends EventEmitter {
   private _throttledOutputFile: ThrottledFile | null = null;
   private _orderedLanguages: LanguageGenerator[] = [];
   private _listeners: RegisteredListener[] = [];
+  private _js_code: string | null = null;
 
   constructor(context: BrowserContext, params: channels.BrowserContextEnableRecorderParams, delegate: ContextRecorderDelegate) {
     super();
@@ -65,6 +67,8 @@ export class ContextRecorder extends EventEmitter {
     this._delegate = delegate;
     this._recorderSources = [];
     const language = params.language || context.attribution.playwright.options.sdkLanguage;
+    const contentDir = params.contentDir;
+    const js_script = params.js_script;
     this.setOutput(language, params.outputFile);
     
     this._collection = new RecorderCollection(this._pageAliases);
@@ -75,9 +79,14 @@ export class ContextRecorder extends EventEmitter {
         contextOptions: { ...params.contextOptions },
         deviceName: params.device,
         saveStorage: params.saveStorage,
+        contentDir: contentDir,
+        js_script: js_script,
       };
+      if (js_script)
+        this._js_code = readFileSync(js_script, 'utf8');
 
       this._recorderSources = [];
+      // console.log('Inside on Change in contextRecorder.ts: ' + actions.map(a => a.action.name).join(', '));
       for (const languageGenerator of this._orderedLanguages) {
         const { header, footer, actionTexts, text } = generateCode(actions, languageGenerator, languageGeneratorOptions);
         const source: Source = {
@@ -134,7 +143,7 @@ export class ContextRecorder extends EventEmitter {
     this._context.on(BrowserContext.Events.Page, (page: Page) => this._onPage(page));
     for (const page of this._context.pages())
       this._onPage(page);
-    this._context.on(BrowserContext.Events.Dialog, (dialog: Dialog) => this._onDialog(dialog.page()));
+    this._context.on(BrowserContext.Events.Dialog, (dialog: Dialog) => this._onDialog(dialog.page(), '', {}));
 
     // Input actions that potentially lead to navigation are intercepted on the page and are
     // performed by the Playwright.
@@ -156,40 +165,67 @@ export class ContextRecorder extends EventEmitter {
     eventsHelper.removeEventListeners(this._listeners);
   }
 
+  private async get_eval_page(frame: Frame) {
+    const content = await frame.content();
+    let eval_page: { [key: string]: any } = {};
+    if (this._js_code) {
+      eval_page = await frame.evaluateExpression(
+          this._js_code,
+          {},
+          {
+            doHighlightElements: false,
+            focusHighlightIndex: -1,
+            viewportExpansion: -1,
+            debugMode: false,
+          }
+      );
+    }
+    return { content: content, eval_page: eval_page };
+  }
+
   private async _onPage(page: Page) {
     // First page is called page, others are called popup1, popup2, etc.
     const frame = page.mainFrame();
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    const { content, eval_page } = await this.get_eval_page(frame);
     page.on('close', () => {
+      const timestamp = new Date().getTime();
+      const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
       this._collection.addRecordedAction({
         frame: this._describeMainFrame(page),
         action: {
           name: 'closePage',
           signals: [],
         },
-        startTime: monotonicTime()
+        startTime: monotonicTime(),
+        uuid: _uuid,
       });
       this._pageAliases.delete(page);
     });
     frame.on(Frame.Events.InternalNavigation, event => {
       if (event.isPublic)
-        this._onFrameNavigated(frame, page);
+        this._onFrameNavigated(frame, page, content, eval_page);
     });
-    page.on(Page.Events.Download, () => this._onDownload(page));
+    page.on(Page.Events.Download, () => this._onDownload(page, content, eval_page));
     const suffix = this._pageAliases.size ? String(++this._lastPopupOrdinal) : '';
     const pageAlias = 'page' + suffix;
     this._pageAliases.set(page, pageAlias);
 
     if (page.opener()) {
-      this._onPopup(page.opener()!, page);
+      this._onPopup(page.opener()!, page, content, eval_page);
     } else {
+      const timestamp = new Date().getTime();
+      const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
+      // console.log('Inside _onPage in contextRecorder.ts: ' + frame.url());
       this._collection.addRecordedAction({
         frame: this._describeMainFrame(page),
         action: {
           name: 'openPage',
-          url: page.mainFrame().url(),
+          url: frame.url(),
           signals: [],
         },
-        startTime: monotonicTime()
+        startTime: monotonicTime(),
+        uuid: _uuid,
       });
     }
   }
@@ -198,7 +234,7 @@ export class ContextRecorder extends EventEmitter {
     this._collection.restart();
     if (this._params.mode === 'recording') {
       for (const page of this._context.pages())
-        this._onFrameNavigated(page.mainFrame(), page);
+        this._onFrameNavigated(page.mainFrame(), page, '', {});
     }
   }
 
@@ -246,12 +282,18 @@ export class ContextRecorder extends EventEmitter {
   }
 
   private async _createActionInContext(frame: Frame, action: actions.Action): Promise<actions.ActionInContext> {
+    const timestamp = new Date().getTime();
+    const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
     const frameDescription = await this._describeFrame(frame);
+    const { content, eval_page } = await this.get_eval_page(frame);
     const actionInContext: actions.ActionInContext = {
       frame: frameDescription,
       action,
       description: undefined,
-      startTime: monotonicTime()
+      startTime: monotonicTime(),
+      uuid: _uuid,
+      content: content,
+      eval_page: eval_page,
     };
     await this._delegate.rewriteActionInContext?.(this._pageAliases, actionInContext);
     return actionInContext;
@@ -265,27 +307,30 @@ export class ContextRecorder extends EventEmitter {
     this._collection.addRecordedAction(await this._createActionInContext(frame, action));
   }
 
-  private _onFrameNavigated(frame: Frame, page: Page) {
+  private _onFrameNavigated(frame: Frame, page: Page, content: string, eval_page: { [key: string]: any }) {
     const pageAlias = this._pageAliases.get(page);
-    this._collection.signal(pageAlias!, frame, { name: 'navigation', url: frame.url() });
+    this._collection.signal(pageAlias!, frame, { name: 'navigation', url: frame.url() }, content, eval_page);
   }
 
-  private _onPopup(page: Page, popup: Page) {
+  private _onPopup(page: Page, popup: Page, content: string, eval_page: { [key: string]: any }) {
+    const frame = page.mainFrame();
     const pageAlias = this._pageAliases.get(page)!;
     const popupAlias = this._pageAliases.get(popup)!;
-    this._collection.signal(pageAlias, page.mainFrame(), { name: 'popup', popupAlias });
+    this._collection.signal(pageAlias, frame, { name: 'popup', popupAlias }, content, eval_page);
   }
 
-  private _onDownload(page: Page) {
+  private _onDownload(page: Page, content: string, eval_page: { [key: string]: any }) {
+    const frame = page.mainFrame();
     const pageAlias = this._pageAliases.get(page)!;
     ++this._lastDownloadOrdinal;
-    this._collection.signal(pageAlias, page.mainFrame(), { name: 'download', downloadAlias: this._lastDownloadOrdinal ? String(this._lastDownloadOrdinal) : '' });
+    this._collection.signal(pageAlias, frame, { name: 'download', downloadAlias: this._lastDownloadOrdinal ? String(this._lastDownloadOrdinal) : '' }, content, eval_page);
   }
 
-  private _onDialog(page: Page) {
+  private _onDialog(page: Page, content: string, eval_page: { [key: string]: any }) {
+    const frame = page.mainFrame();
     const pageAlias = this._pageAliases.get(page)!;
     ++this._lastDialogOrdinal;
-    this._collection.signal(pageAlias, page.mainFrame(), { name: 'dialog', dialogAlias: this._lastDialogOrdinal ? String(this._lastDialogOrdinal) : '' });
+    this._collection.signal(pageAlias, frame, { name: 'dialog', dialogAlias: this._lastDialogOrdinal ? String(this._lastDialogOrdinal) : '' }, content, eval_page);
   }
 }
 
