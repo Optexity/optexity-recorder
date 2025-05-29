@@ -124,5 +124,5 @@ Playwright is nested as a git subtree.
 To update it, just run the following command (replace `v1.48.0` with the desired release tag):
 
 ```bash
-git subtree pull --prefix=playwright git@github.com:microsoft/playwright.git v1.48.0 --squash
+git subtree pull --prefix=playwright git@github.com:optexity/playwright.git optexity-v1.52.0 --squash
 ```
