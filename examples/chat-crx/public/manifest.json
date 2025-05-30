@@ -1,0 +1,17 @@
+{
+  "name": "Optexity",
+  "version": "0.14.0",
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Optexity"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "permissions": ["debugger", "tabs", "sidePanel"],
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+}
