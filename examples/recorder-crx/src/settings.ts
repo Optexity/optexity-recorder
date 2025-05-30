@@ -23,7 +23,7 @@ export type CrxSettings = {
 
 export const defaultSettings = {
   testIdAttributeName: 'data-testid',
-  targetLanguage: 'playwright-test',
+  targetLanguage: 'javascript',
   sidepanel: true,
   experimental: false,
   playInIncognito: false,

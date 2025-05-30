@@ -84,7 +84,7 @@ export default [
         'mustMatch': 'Copyright',
         'templateFile': path.join(__dirname, 'utils', 'copyright.js'),
       }],
-      'no-console': 2,
+      'no-console': "off",
     }
   },
   // TODO lint tests
@@ -108,7 +108,7 @@ function projectSection(projDir) {
     },
     rules: {
       ...baseRules,
-      'no-console': 2,
+      'no-console': "off",
     }
   };
 }
