@@ -9,9 +9,11 @@
     "build": "tsc && vite build"
   },
   "dependencies": {
+    "canvas-confetti": "^1.7.0",
     "playwright-crx": "0.14.0"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.6.4",
     "@types/chrome": "^0.0.281",
     "typescript": "^5.7.3",
     "vite": "^6.1.0"

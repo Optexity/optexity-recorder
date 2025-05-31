@@ -1,7 +1,12 @@
 import { Locator, Page } from "playwright-crx";
+import { highlightDone, highlightElement } from "./highlight";
 
 export async function takeAction(action: any, page: Page) {
-  if (action.next_action_name == "DoneAction") return "Done";
+  console.log("takeAction", action);
+  if (action.next_action_name == "DoneAction") {
+    await highlightDone(page);
+    return "Done";
+  }
   if (action.next_action.locators == null) return false;
   if (action.next_action.locators.length == 0) return false;
 
@@ -72,8 +77,10 @@ export async function takeAction(action: any, page: Page) {
     }
   }
   if (element == null) return false;
+
   switch (action.next_action_name) {
     case "ClickElementAction":
+      await highlightElement(page, element, "Clicking this element");
       if (action.next_action.double_click) {
         await element.dblclick();
       } else {
@@ -81,6 +88,7 @@ export async function takeAction(action: any, page: Page) {
       }
       break;
     case "InputTextAction":
+      await highlightElement(page, element, "Typing this element");
       await element.fill(action.next_action.text);
       break;
   }
