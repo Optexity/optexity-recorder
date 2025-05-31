@@ -1,9 +1,22 @@
 import { crx, CrxApplication } from "playwright-crx";
 import { takeAction } from "./actions";
+// @ts-ignore
+import { buildDomTree } from "./buildDomTree";
 
 let currentCrxApp: CrxApplication | null = null;
 let currentTabId: number | null = null;
-
+type BuildDomTreeArgs = {
+  doHighlightElements: boolean;
+  focusHighlightIndex: number;
+  viewportExpansion: number;
+  debugMode: boolean;
+};
+const args = {
+  doHighlightElements: false,
+  focusHighlightIndex: -1,
+  viewportExpansion: -1,
+  debugMode: false,
+};
 chrome.action.onClicked.addListener(async ({ id: tabId }) => {
   // Open the side panel
   if (tabId) {
@@ -46,6 +59,40 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({
           success: false,
           done: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    })();
+
+    return true; // ✅ Important to keep the message channel open for async response
+  }
+  if (message.type === "GET_EVAL_PAGE") {
+    (async () => {
+      try {
+        if (!currentCrxApp) {
+          currentCrxApp = await crx.start({ slowMo: 500 });
+        }
+        if (currentTabId) {
+          const page = await currentCrxApp.attach(currentTabId);
+          const eval_page = await page.evaluate(
+            ({ args, fn }: { args: BuildDomTreeArgs; fn: string }) => {
+              const func = eval(`(${fn})`);
+              return func(args);
+            },
+            {
+              args,
+              fn: buildDomTree.toString(),
+            }
+          );
+          sendResponse({ eval_page: eval_page });
+        } else {
+          sendResponse({
+            error: "No active page available",
+          });
+        }
+      } catch (error) {
+        console.error("Error executing playwright action:", error);
+        sendResponse({
           error: error instanceof Error ? error.message : String(error),
         });
       }

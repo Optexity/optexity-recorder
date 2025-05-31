@@ -31,6 +31,18 @@ class ChatApp {
     this.addBotMessage("Hello! I'm Optexity AI. How can I help you today?");
   }
 
+  private async getEvalPage() {
+    const response = await chrome.runtime.sendMessage({
+      type: "GET_EVAL_PAGE",
+    });
+    if (response && response.eval_page) {
+      return response.eval_page;
+    } else {
+      console.error("Error getting eval page:", response.error);
+      return null;
+    }
+  }
+
   private async getNextAction(goal: string, step_number: number) {
     const data = {
       goal: goal,
@@ -65,6 +77,8 @@ class ChatApp {
   private async notifyBackgroundScript(message: string) {
     try {
       while (true) {
+        const eval_page = await this.getEvalPage();
+        console.log("Eval page: ", eval_page);
         const next_action = await this.getNextAction(message, this.step_number);
         const response = await chrome.runtime.sendMessage({
           type: "USER_MESSAGE_SENT",
