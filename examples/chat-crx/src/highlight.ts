@@ -17,8 +17,6 @@ const styles = {
   },
   highlightCircle: {
     position: "absolute",
-    border: "2px solid #FF4081",
-    borderRadius: "50%",
     pointerEvents: "none",
     zIndex: 9999,
   },
@@ -33,6 +31,29 @@ const styles = {
     maxWidth: "200px",
   },
 };
+
+// CSS for the hand-drawn animation
+const handDrawnStyles = `
+  .highlight-circle-path {
+    stroke: #FF4081;
+    stroke-width: 3;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    animation: drawCircle 1.2s ease-in-out forwards;
+    stroke-dasharray: 0;
+    stroke-dashoffset: 0;
+  }
+
+  @keyframes drawCircle {
+    0% {
+      stroke-dasharray: 0 1000;
+    }
+    100% {
+      stroke-dasharray: 1000 1000;
+    }
+  }
+`;
 
 // Remove all existing highlights
 export async function removeHighlight(page: Page) {
@@ -106,16 +127,55 @@ export async function highlightElement(
   if (!boundingBox) return;
 
   await page.evaluate(
-    ({ boundingBox, message, styles }) => {
-      // Create circle highlight
-      const circle = document.createElement("div");
-      Object.assign(circle.style, styles.highlightCircle);
-      circle.style.width = `${boundingBox.width + 20}px`;
-      circle.style.height = `${boundingBox.height + 20}px`;
-      circle.style.left = `${boundingBox.x - 10}px`;
-      circle.style.top = `${boundingBox.y - 10}px`;
-      circle.className = "highlight-overlay";
-      document.body.appendChild(circle);
+    ({ boundingBox, message, styles, handDrawnStyles }) => {
+      // Add styles if not already present
+      if (!document.getElementById("hand-drawn-styles")) {
+        const styleSheet = document.createElement("style");
+        styleSheet.id = "hand-drawn-styles";
+        styleSheet.textContent = handDrawnStyles;
+        document.head.appendChild(styleSheet);
+      }
+
+      // Create SVG container
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      Object.assign(svg.style, styles.highlightCircle);
+      svg.style.width = `${boundingBox.width + 40}px`;
+      svg.style.height = `${boundingBox.height + 40}px`;
+      svg.style.left = `${boundingBox.x - 20}px`;
+      svg.style.top = `${boundingBox.y - 20}px`;
+      svg.setAttribute("width", `${boundingBox.width + 40}`);
+      svg.setAttribute("height", `${boundingBox.height + 40}`);
+      svg.setAttribute("class", "highlight-overlay");
+
+      // Create smooth ellipse path
+      const width = boundingBox.width + 40;
+      const height = boundingBox.height + 40;
+      const rx = width / 2;
+      const ry = height / 2;
+      const cx = rx;
+      const cy = ry;
+
+      // Create a smooth path using cubic bezier curves
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      const kappa = 0.5522848; // Magic number for smooth circle
+      const ox = rx * kappa;   // Control point offset X
+      const oy = ry * kappa;   // Control point offset Y
+
+      // Construct smooth path with overlapping ends
+      const startX = cx - rx;
+      const startY = cy;
+      let d = [
+        `M ${startX - 5},${startY}`,  // Start 5px before
+        `C ${startX - 5},${cy - oy} ${cx - ox},${cy - ry} ${cx},${cy - ry}`,     // Top curve
+        `C ${cx + ox},${cy - ry} ${cx + rx},${cy - oy} ${cx + rx},${cy}`,       // Right curve
+        `C ${cx + rx},${cy + oy} ${cx + ox},${cy + ry} ${cx},${cy + ry}`,       // Bottom curve
+        `C ${cx - ox},${cy + ry} ${startX},${cy + oy} ${startX + 10},${startY}` // Left curve with overlap
+      ].join(" ");
+
+      path.setAttribute("d", d);
+      path.setAttribute("class", "highlight-circle-path");
+      svg.appendChild(path);
+      document.body.appendChild(svg);
 
       // Create tooltip
       const tooltip = document.createElement("div");
@@ -128,6 +188,6 @@ export async function highlightElement(
       tooltip.style.top = `${boundingBox.y - 40}px`;
       document.body.appendChild(tooltip);
     },
-    { boundingBox, message, styles }
+    { boundingBox, message, styles, handDrawnStyles }
   );
 }

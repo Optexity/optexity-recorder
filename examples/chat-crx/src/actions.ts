@@ -1,5 +1,5 @@
 import { Locator, Page } from "playwright-crx";
-import { highlightDone, highlightElement } from "./highlight";
+import { highlightDone, highlightElement, removeHighlight } from "./highlight";
 
 export async function takeAction(action: any, page: Page) {
   console.log("takeAction", action);
@@ -80,16 +80,20 @@ export async function takeAction(action: any, page: Page) {
 
   switch (action.next_action_name) {
     case "ClickElementAction":
-      await highlightElement(page, element, "Clicking this element");
+      await highlightElement(page, element, `Clicking on ${await element.innerText()}`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       if (action.next_action.double_click) {
         await element.dblclick();
       } else {
         await element.click();
       }
+      await removeHighlight(page);
       break;
     case "InputTextAction":
-      await highlightElement(page, element, "Typing this element");
+      await highlightElement(page, element, `Typing on ${await element.innerText()}`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       await element.fill(action.next_action.text);
+      await removeHighlight(page);
       break;
   }
   return true;
