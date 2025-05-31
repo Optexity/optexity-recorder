@@ -1,20 +1,5 @@
-/**
- * Copyright (c) Rui Figueira.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { crx, CrxApplication } from "playwright-crx";
+import { takeAction } from "./actions";
 
 let currentCrxApp: CrxApplication | null = null;
 let currentTabId: number | null = null;
@@ -22,39 +7,71 @@ let currentTabId: number | null = null;
 chrome.action.onClicked.addListener(async ({ id: tabId }) => {
   // Open the side panel
   if (tabId) {
-    await chrome.sidePanel.open({ tabId });
-    currentTabId = tabId;
-    // Initialize playwright session for this tab
-    if (!currentCrxApp) {
-      currentCrxApp = await crx.start({ slowMo: 500 });
+    try {
+      await chrome.sidePanel.open({ tabId });
+      currentTabId = tabId;
+      // Initialize playwright session for this tab
+      if (!currentCrxApp) {
+        currentCrxApp = await crx.start({ slowMo: 500 });
+      }
+    } catch (error) {
+      console.error(
+        "Error opening side panel or initializing playwright:",
+        error
+      );
     }
   }
 });
 
-// Listen for messages from the sidepanel
-chrome.runtime.onMessage.addListener(async (message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "USER_MESSAGE_SENT") {
-    try {
-      if (!currentCrxApp) {
-        currentCrxApp = await crx.start({ slowMo: 500 });
+    (async () => {
+      try {
+        if (!currentCrxApp) {
+          currentCrxApp = await crx.start({ slowMo: 500 });
+        }
+        if (currentTabId) {
+          const page = await currentCrxApp.attach(currentTabId);
+          const success = await takeAction(message.next_action, page);
+          sendResponse({ success: true, done: success === "Done" });
+        } else {
+          sendResponse({
+            success: false,
+            done: false,
+            error: "No active page available",
+          });
+        }
+      } catch (error) {
+        console.error("Error executing playwright action:", error);
+        sendResponse({
+          success: false,
+          done: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
-      // Execute the playwright action after user message
-      if (currentTabId) {
-        const page = await currentCrxApp.attach(currentTabId);
-        await page.getByRole("link", { name: "Sign in" }).click();
-        sendResponse({ success: true });
-      } else {
-        sendResponse({ success: false, error: "No active page available" });
-      }
-    } catch (error) {
-      console.error("Error executing playwright action:", error);
-      sendResponse({
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    })();
+
+    return true; // ✅ Important to keep the message channel open for async response
   }
 
-  // Return true to indicate we'll send a response asynchronously
-  return true;
+  return false;
+});
+
+// Clean up when tabs are removed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (currentTabId === tabId) {
+    currentTabId = null;
+  }
+});
+
+// Clean up when extension is disabled/unloaded
+chrome.runtime.onSuspend.addListener(async () => {
+  if (currentCrxApp) {
+    try {
+      await currentCrxApp.close();
+      currentCrxApp = null;
+    } catch (error) {
+      console.error("Error closing playwright session:", error);
+    }
+  }
 });

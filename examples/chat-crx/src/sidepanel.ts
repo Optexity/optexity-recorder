@@ -3,6 +3,7 @@ class ChatApp {
   private messageInput: HTMLInputElement;
   private sendButton: HTMLButtonElement;
   private isProcessing: boolean = false;
+  private step_number: number = 0;
 
   constructor() {
     this.messages = document.getElementById("messages") as HTMLElement;
@@ -30,6 +31,61 @@ class ChatApp {
     this.addBotMessage("Hello! I'm Optexity AI. How can I help you today?");
   }
 
+  private async getNextAction(goal: string, step_number: number) {
+    const data = {
+      goal: goal,
+      step_number: step_number,
+      demonstration_id: "2e59a56c-954e-4f8c-8043-e52fae6d83d3",
+    };
+
+    try {
+      const response = await fetch(
+        "http://localhost:8000/api/v1/get_next_step",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer test",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error getting next step:", error);
+      throw error;
+    }
+  }
+
+  private async notifyBackgroundScript(message: string) {
+    try {
+      while (true) {
+        const next_action = await this.getNextAction(message, this.step_number);
+        const response = await chrome.runtime.sendMessage({
+          type: "USER_MESSAGE_SENT",
+          message: message,
+          next_action: next_action,
+        });
+        if (response && response.done) {
+          break;
+        } else if (response && !response.success) {
+          console.warn("Playwright action failed:", response.error);
+          break;
+        }
+
+        this.step_number++;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    } catch (error) {
+      console.error("Failed to communicate with background script:", error);
+    }
+  }
+
   private async sendMessage() {
     const message = this.messageInput.value.trim();
     if (!message || this.isProcessing) return;
@@ -38,24 +94,18 @@ class ChatApp {
     this.addUserMessage(message);
     this.messageInput.value = "";
 
-    // Notify background script about user message
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: "USER_MESSAGE_SENT",
-        message: message,
-      });
+    // Show processing while notifying background script
+    this.startProcessing();
 
-      if (response && !response.success) {
-        console.warn("Playwright action failed:", response.error);
-      }
-    } catch (error) {
-      console.error("Failed to communicate with background script:", error);
+    try {
+      // Notify background script about user message
+      await this.notifyBackgroundScript(message);
+    } finally {
+      // Hide processing when background script notification completes
+      this.stopProcessing();
     }
 
-    // Show processing
-    await this.showProcessing();
-
-    // Generate and show bot response after 5 seconds
+    // Generate and show bot response
     await this.generateResponse(message);
   }
 
@@ -75,7 +125,7 @@ class ChatApp {
     this.scrollToBottom();
   }
 
-  private async showProcessing(): Promise<void> {
+  private startProcessing(): void {
     this.isProcessing = true;
     this.sendButton.disabled = true;
 
@@ -90,12 +140,13 @@ class ChatApp {
 
     this.messages.appendChild(processingElement);
     this.scrollToBottom();
+  }
 
-    // Wait for 5 seconds
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-
-    // Remove processing indicator
-    this.messages.removeChild(processingElement);
+  private stopProcessing(): void {
+    const processingElement = this.messages.querySelector(".processing");
+    if (processingElement) {
+      this.messages.removeChild(processingElement);
+    }
 
     this.isProcessing = false;
     this.sendButton.disabled = false;
