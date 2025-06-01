@@ -47,7 +47,7 @@ class ChatApp {
     const data = {
       goal: goal,
       step_number: step_number,
-      demonstration_id: "2e59a56c-954e-4f8c-8043-e52fae6d83d3",
+      demonstration_id: "b9e38a4b-794a-49f5-8ddf-19c1e6a07763",
     };
 
     try {

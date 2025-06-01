@@ -1,15 +1,7 @@
 import { Locator, Page } from "playwright-crx";
 import { highlightDone, highlightElement, removeHighlight } from "./highlight";
 
-export async function takeAction(action: any, page: Page) {
-  console.log("takeAction", action);
-  if (action.next_action_name == "DoneAction") {
-    await highlightDone(page);
-    return "Done";
-  }
-  if (action.next_action.locators == null) return false;
-  if (action.next_action.locators.length == 0) return false;
-
+function buildAction(action: any, page: Page) {
   let element: Locator | null = null;
   for (const locator of action.next_action.locators) {
     switch (locator.locator_type) {
@@ -76,11 +68,28 @@ export async function takeAction(action: any, page: Page) {
         throw new Error(`Unknown locator type: ${locator.locator_type}`);
     }
   }
+  return element;
+}
+
+export async function takeAction(action: any, page: Page) {
+  console.log("takeAction", action);
+  if (action.next_action_name == "DoneAction") {
+    await highlightDone(page);
+    return "Done";
+  }
+  if (action.next_action.locators == null) return false;
+  if (action.next_action.locators.length == 0) return false;
+
+  let element: Locator | null = buildAction(action, page);
   if (element == null) return false;
 
   switch (action.next_action_name) {
     case "ClickElementAction":
-      await highlightElement(page, element, `Clicking on ${await element.innerText()}`);
+      await highlightElement(
+        page,
+        element,
+        `Clicking on ${await element.innerText()}`
+      );
       await new Promise((resolve) => setTimeout(resolve, 1000));
       if (action.next_action.double_click) {
         await element.dblclick();
@@ -90,7 +99,11 @@ export async function takeAction(action: any, page: Page) {
       await removeHighlight(page);
       break;
     case "InputTextAction":
-      await highlightElement(page, element, `Typing on ${await element.innerText()}`);
+      await highlightElement(
+        page,
+        element,
+        `Typing on ${await element.innerText()}`
+      );
       await new Promise((resolve) => setTimeout(resolve, 1000));
       await element.fill(action.next_action.text);
       await removeHighlight(page);
