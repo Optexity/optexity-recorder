@@ -74,7 +74,7 @@ class ChatApp {
     }
   }
 
-  private async notifyBackgroundScript(message: string) {
+  private async takeActions(message: string) {
     try {
       while (true) {
         const eval_page = await this.getEvalPage();
@@ -113,7 +113,7 @@ class ChatApp {
 
     try {
       // Notify background script about user message
-      await this.notifyBackgroundScript(message);
+      await this.takeActions(message);
     } finally {
       // Hide processing when background script notification completes
       this.stopProcessing();
