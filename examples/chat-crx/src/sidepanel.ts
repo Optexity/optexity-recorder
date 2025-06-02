@@ -1,9 +1,12 @@
-export class ChatApp {
+class ChatApp {
   private messages: HTMLElement;
   private messageInput: HTMLInputElement;
   private sendButton: HTMLButtonElement;
+  private modeToggle: HTMLInputElement;
   private isProcessing: boolean = false;
   private step_number: number = 0;
+  private isManualMode: boolean = true;
+  private api_url: string = "http://localhost:8000/api/v1";
 
   constructor() {
     this.messages = document.getElementById("messages") as HTMLElement;
@@ -13,11 +16,8 @@ export class ChatApp {
     this.sendButton = document.getElementById(
       "sendButton"
     ) as HTMLButtonElement;
+    this.modeToggle = document.getElementById("modeToggle") as HTMLInputElement;
 
-    this.init();
-  }
-
-  private init() {
     // Add event listeners
     this.sendButton.addEventListener("click", () => this.sendMessage());
     this.messageInput.addEventListener("keypress", (e) => {
@@ -27,12 +27,16 @@ export class ChatApp {
       }
     });
 
+    // Add mode toggle listener
+    this.modeToggle.addEventListener("change", () => {
+      this.isManualMode = !this.modeToggle.checked;
+      this.addBotMessage(
+        `Switched to ${this.isManualMode ? "Manual" : "Autonomous"} mode`
+      );
+    });
+
     // Add welcome message
     this.addBotMessage("Hello! I'm Optexity AI. How can I help you today?");
-  }
-
-  check_working() {
-    console.log("Checking working ChatApp");
   }
 
   private async getEvalPage() {
@@ -47,6 +51,22 @@ export class ChatApp {
     }
   }
 
+  private async post_request(end_point: string, data: any) {
+    const response = await fetch(`${this.api_url}/${end_point}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer test",
+      },
+      body: JSON.stringify(data),
+    });
+    // ## TODO: convert to object
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  }
+
   private async getNextAction(goal: string, step_number: number) {
     const data = {
       goal: goal,
@@ -55,48 +75,41 @@ export class ChatApp {
     };
 
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/v1/get_next_step",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer test",
-          },
-          body: JSON.stringify(data),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      const response = await this.post_request("get_next_step", data);
+      return response;
     } catch (error) {
       console.error("Error getting next step:", error);
       throw error;
     }
   }
 
-  private async takeActions(message: string) {
+  private async takeAction(goal: string) {
+    const eval_page = await this.getEvalPage();
+    console.log("Eval page: ", eval_page);
+    const next_action = await this.getNextAction(goal, this.step_number);
+    const response = await chrome.runtime.sendMessage({
+      type: "TAKE_ACTION",
+      goal: goal,
+      next_action: next_action,
+      manual_mode: this.isManualMode,
+    });
+    this.step_number++;
+    return response;
+  }
+
+  private async takeActions(goal: string) {
     try {
       while (true) {
-        const eval_page = await this.getEvalPage();
-        console.log("Eval page: ", eval_page);
-        const next_action = await this.getNextAction(message, this.step_number);
-        const response = await chrome.runtime.sendMessage({
-          type: "USER_MESSAGE_SENT",
-          message: message,
-          next_action: next_action,
-        });
+        const response = await this.takeAction(goal);
         if (response && response.done) {
           break;
         } else if (response && !response.success) {
           console.warn("Playwright action failed:", response.error);
           break;
         }
-
-        this.step_number++;
+        if (this.isManualMode) {
+          break;
+        }
         await new Promise((r) => setTimeout(r, 2000));
       }
     } catch (error) {
@@ -170,30 +183,8 @@ export class ChatApp {
     this.sendButton.disabled = false;
   }
 
-  private async generateResponse(userMessage: string): Promise<void> {
-    // Dummy responses for now
-    const responses = [
-      "That's a great question! I'm currently processing your request and will provide a detailed response soon.",
-      "I understand what you're asking. Let me analyze this information and get back to you with insights.",
-      "Interesting perspective! Based on what you've shared, here are some thoughts to consider.",
-      "Thank you for your message. I'm working on finding the best solution for your query.",
-      "I appreciate your input. Let me process this and provide you with relevant information.",
-      "Your question is very insightful. I'm analyzing the context to give you the most accurate response.",
-      "That's a complex topic! I'm gathering the necessary information to provide you with a comprehensive answer.",
-    ];
-
-    const randomResponse =
-      responses[Math.floor(Math.random() * responses.length)];
-
-    // Add some variety by sometimes referencing the user's message
-    const enhancedResponse =
-      Math.random() > 0.5
-        ? `Regarding "${userMessage.substring(0, 30)}${
-            userMessage.length > 30 ? "..." : ""
-          }", ${randomResponse.toLowerCase()}`
-        : randomResponse;
-
-    this.addBotMessage(enhancedResponse);
+  private async generateResponse(goal: string): Promise<void> {
+    this.addBotMessage(`Taking action for goal: ${goal}`);
   }
 
   private scrollToBottom() {

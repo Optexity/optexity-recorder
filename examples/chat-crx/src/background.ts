@@ -17,10 +17,13 @@ chrome.action.onClicked.addListener(async ({ id: tabId }) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "USER_MESSAGE_SENT") {
+  if (message.type === "TAKE_ACTION") {
     (async () => {
       if (currentAgent) {
-        const success = await currentAgent.getNextStep(message.next_action);
+        const success = await currentAgent.takeAction(
+          message.next_action,
+          message.manual_mode
+        );
         sendResponse(success);
       } else {
         sendResponse({
