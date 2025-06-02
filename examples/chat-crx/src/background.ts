@@ -37,6 +37,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true; // ✅ Important to keep the message channel open for async response
   }
 
+  if (message.type === "ATTACH_TAB") {
+    (async () => {
+      try {
+        if (!currentAgent) {
+          currentAgent = await Agent.init(message.tabId);
+        } else {
+          currentAgent.attach_new_tab(message.tabId);
+        }
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error("Error attaching to tab:", error);
+        sendResponse({ success: false, error: "Failed to attach to tab" });
+      }
+    })();
+
+    return true; // ✅ Important to keep the message channel open for async response
+  }
+
   if (message.type === "GET_EVAL_PAGE") {
     (async () => {
       if (currentAgent) {

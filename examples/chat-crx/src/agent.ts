@@ -39,6 +39,10 @@ export class Agent {
     return new Agent(tabId, crxApp);
   }
 
+  attach_new_tab(tabId: number) {
+    this.currentTabId = tabId;
+  }
+
   async close() {
     await this.currentCrxApp.close();
   }

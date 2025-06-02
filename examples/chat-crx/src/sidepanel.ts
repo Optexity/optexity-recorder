@@ -3,6 +3,7 @@ class ChatApp {
   private messageInput: HTMLInputElement;
   private sendButton: HTMLButtonElement;
   private modeToggle: HTMLInputElement;
+  private attachButton: HTMLButtonElement;
   private isProcessing: boolean = false;
   private step_number: number = 0;
   private isManualMode: boolean = true;
@@ -17,6 +18,9 @@ class ChatApp {
       "sendButton"
     ) as HTMLButtonElement;
     this.modeToggle = document.getElementById("modeToggle") as HTMLInputElement;
+    this.attachButton = document.getElementById(
+      "attachButton"
+    ) as HTMLButtonElement;
 
     // Add event listeners
     this.sendButton.addEventListener("click", () => this.sendMessage());
@@ -35,8 +39,31 @@ class ChatApp {
       );
     });
 
+    // Add attach button listener
+    this.attachButton.addEventListener("click", () => this.attachCurrentTab());
+
     // Add welcome message
     this.addBotMessage("Hello! I'm Optexity AI. How can I help you today?");
+  }
+
+  private async attachCurrentTab() {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "ATTACH_TAB",
+      });
+      if (response && response.success) {
+        this.addBotMessage("Successfully attached to the current tab!");
+      } else {
+        this.addBotMessage(
+          "Failed to attach to the current tab: " + response.error
+        );
+      }
+    } catch (error) {
+      console.error("Error attaching to tab:", error);
+      this.addBotMessage(
+        "Failed to attach to the current tab. Please try again."
+      );
+    }
   }
 
   private async getEvalPage() {
@@ -121,22 +148,17 @@ class ChatApp {
     const message = this.messageInput.value.trim();
     if (!message || this.isProcessing) return;
 
-    // Add user message
     this.addUserMessage(message);
     this.messageInput.value = "";
 
-    // Show processing while notifying background script
     this.startProcessing();
 
     try {
-      // Notify background script about user message
       await this.takeActions(message);
     } finally {
-      // Hide processing when background script notification completes
       this.stopProcessing();
     }
 
-    // Generate and show bot response
     await this.generateResponse(message);
   }
 
