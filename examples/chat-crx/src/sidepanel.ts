@@ -1,4 +1,4 @@
-class ChatApp {
+export class ChatApp {
   private messages: HTMLElement;
   private messageInput: HTMLInputElement;
   private sendButton: HTMLButtonElement;
@@ -29,6 +29,10 @@ class ChatApp {
 
     // Add welcome message
     this.addBotMessage("Hello! I'm Optexity AI. How can I help you today?");
+  }
+
+  check_working() {
+    console.log("Checking working ChatApp");
   }
 
   private async getEvalPage() {
