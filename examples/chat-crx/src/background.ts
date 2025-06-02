@@ -16,6 +16,32 @@ chrome.action.onClicked.addListener(async ({ id: tabId }) => {
   }
 });
 
+async function updateCurrentTabId() {
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    if (tabs.length > 0) {
+      const newTabId = tabs[0].id;
+      if (newTabId == null) {
+        return;
+      }
+      if (!currentAgent) {
+        currentAgent = await Agent.init(newTabId);
+      } else {
+        currentAgent.attach_new_tab(newTabId);
+      }
+    }
+  });
+}
+
+// Fired when the user switches tabs
+chrome.tabs.onActivated.addListener(updateCurrentTabId);
+
+// Fired when the user switches browser windows
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId !== chrome.windows.WINDOW_ID_NONE) {
+    updateCurrentTabId();
+  }
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "TAKE_ACTION") {
     (async () => {

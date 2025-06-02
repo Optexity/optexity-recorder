@@ -12,5 +12,5 @@
   "side_panel": {
     "default_path": "sidepanel.html"
   },
-  "permissions": ["debugger", "tabs", "sidePanel"]
+  "permissions": ["debugger", "tabs", "sidePanel", "windows"]
 }
