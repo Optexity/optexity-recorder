@@ -94,11 +94,15 @@ class ChatApp {
     return await response.json();
   }
 
-  private async getNextAction(goal: string, step_number: number) {
+  private async getNextAction(
+    goal: string,
+    step_number: number,
+    demonstration_id: string | null
+  ) {
     const data = {
       goal: goal,
       step_number: step_number,
-      demonstration_id: "b9e38a4b-794a-49f5-8ddf-19c1e6a07763",
+      demonstration_id: demonstration_id,
     };
 
     try {
@@ -110,10 +114,14 @@ class ChatApp {
     }
   }
 
-  private async takeAction(goal: string) {
+  private async takeAction(goal: string, demonstration_id: string | null) {
     const eval_page = await this.getEvalPage();
     console.log("Eval page: ", eval_page);
-    const next_action = await this.getNextAction(goal, this.step_number);
+    const next_action = await this.getNextAction(
+      goal,
+      this.step_number,
+      demonstration_id
+    );
     const response = await chrome.runtime.sendMessage({
       type: "TAKE_ACTION",
       goal: goal,
@@ -121,13 +129,21 @@ class ChatApp {
       manual_mode: this.isManualMode,
     });
     this.step_number++;
-    return response;
+    return {
+      response: response,
+      return_demonstration_id: next_action.demonstration_id,
+    };
   }
 
   private async takeActions(goal: string) {
     try {
+      let demonstration_id = null;
       while (true) {
-        const response = await this.takeAction(goal);
+        const { response, return_demonstration_id } = await this.takeAction(
+          goal,
+          demonstration_id
+        );
+        demonstration_id = return_demonstration_id;
         if (response && response.done) {
           break;
         } else if (response && !response.success) {
