@@ -19,6 +19,7 @@ export class Agent {
   private ClickElementAction = "ClickElementAction";
   private InputTextAction = "InputTextAction";
   private DoneAction = "DoneAction";
+  private shouldStop = false;
 
   private args = {
     doHighlightElements: false,
@@ -92,6 +93,7 @@ export class Agent {
   }
 
   async takeAction(action: any, manual_mode: boolean) {
+    this.shouldStop = false;
     try {
       const page = await this.currentCrxApp.attach(this.currentTabId);
       await removeHighlight(page);
@@ -122,7 +124,7 @@ export class Agent {
         );
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        if (!manual_mode) {
+        if (!manual_mode && !this.shouldStop) {
           switch (action.next_action_name) {
             case this.ClickElementAction:
               if (action.next_action.double_click) {
@@ -169,6 +171,16 @@ export class Agent {
     } catch (error) {
       console.error("Error evaluating page:", error);
       return null;
+    }
+  }
+
+  async stopProcessing() {
+    try {
+      this.shouldStop = true;
+      const page = await this.currentCrxApp.attach(this.currentTabId);
+      await removeHighlight(page);
+    } catch (error) {
+      console.error("Error stopping processing:", error);
     }
   }
 }

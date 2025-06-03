@@ -6,7 +6,11 @@ chrome.action.onClicked.addListener(async ({ id: tabId }) => {
   if (tabId) {
     try {
       await chrome.sidePanel.open({ tabId });
-      currentAgent = await Agent.init(tabId);
+      if (currentAgent == null) {
+        currentAgent = await Agent.init(tabId);
+      } else {
+        currentAgent.attach_new_tab(tabId);
+      }
     } catch (error) {
       console.error(
         "Error opening side panel or initializing playwright:",
@@ -23,7 +27,7 @@ async function updateCurrentTabId() {
       if (newTabId == null) {
         return;
       }
-      if (!currentAgent) {
+      if (currentAgent == null) {
         currentAgent = await Agent.init(newTabId);
       } else {
         currentAgent.attach_new_tab(newTabId);
@@ -66,7 +70,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "ATTACH_TAB") {
     (async () => {
       try {
-        if (!currentAgent) {
+        if (currentAgent == null) {
           currentAgent = await Agent.init(message.tabId);
         } else {
           currentAgent.attach_new_tab(message.tabId);
@@ -86,6 +90,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (currentAgent) {
         const eval_page = await currentAgent.getEvalPage();
         sendResponse({ eval_page: eval_page });
+      } else {
+        sendResponse({
+          error: "No active agent available",
+        });
+      }
+    })();
+
+    return true; // ✅ Important to keep the message channel open for async response
+  }
+
+  if (message.type === "STOP_PROCESSING") {
+    (async () => {
+      if (currentAgent) {
+        await currentAgent.stopProcessing();
+        sendResponse({ success: true });
       } else {
         sendResponse({
           error: "No active agent available",

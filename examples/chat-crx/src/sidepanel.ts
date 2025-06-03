@@ -6,8 +6,10 @@ class ChatApp {
   private attachButton: HTMLButtonElement;
   private isProcessing: boolean = false;
   private step_number: number = 0;
-  private isManualMode: boolean = true;
+  private isManualMode: boolean = false;
   private api_url: string = "http://localhost:8000/api/v1";
+  private shouldStop: boolean = false;
+  private inputContainer: HTMLElement;
 
   constructor() {
     this.messages = document.getElementById("messages") as HTMLElement;
@@ -21,6 +23,9 @@ class ChatApp {
     this.attachButton = document.getElementById(
       "attachButton"
     ) as HTMLButtonElement;
+    this.inputContainer = document.getElementById(
+      "input-container"
+    ) as HTMLElement;
 
     // Add event listeners
     this.sendButton.addEventListener("click", () => this.sendMessage());
@@ -33,9 +38,9 @@ class ChatApp {
 
     // Add mode toggle listener
     this.modeToggle.addEventListener("change", () => {
-      this.isManualMode = !this.modeToggle.checked;
+      this.isManualMode = this.modeToggle.checked;
       this.addBotMessage(
-        `Switched to ${this.isManualMode ? "Manual" : "Autonomous"} mode`
+        `Switched to ${this.isManualMode ? "Autonomous" : "Manual"} mode`
       );
     });
 
@@ -138,7 +143,7 @@ class ChatApp {
   private async takeActions(goal: string) {
     try {
       let demonstration_id = null;
-      while (true) {
+      while (!this.shouldStop) {
         const { response, return_demonstration_id } = await this.takeAction(
           goal,
           demonstration_id
@@ -167,6 +172,8 @@ class ChatApp {
     this.addUserMessage(message);
     this.messageInput.value = "";
 
+    await this.generateResponse(message);
+
     this.startProcessing();
 
     try {
@@ -174,8 +181,6 @@ class ChatApp {
     } finally {
       this.stopProcessing();
     }
-
-    await this.generateResponse(message);
   }
 
   private addUserMessage(message: string) {
@@ -196,19 +201,63 @@ class ChatApp {
 
   private startProcessing(): void {
     this.isProcessing = true;
+    this.shouldStop = false;
     this.sendButton.disabled = true;
+
+    // Replace input container with stop button
+    const originalContent = this.inputContainer.innerHTML;
+    this.inputContainer.innerHTML = `
+      <div class="input-wrapper">
+        <button id="stopButton" class="stop-button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          </svg>
+          Stop
+        </button>
+      </div>
+    `;
+
+    const stopButton = document.getElementById("stopButton");
+    if (stopButton) {
+      stopButton.addEventListener("click", () => {
+        this.shouldStop = true;
+        this.stopProcessing();
+        chrome.runtime.sendMessage({
+          type: "STOP_PROCESSING",
+        });
+        // Restore the original input container
+        this.inputContainer.innerHTML = originalContent;
+        this.messageInput = document.getElementById(
+          "messageInput"
+        ) as HTMLInputElement;
+        this.sendButton = document.getElementById(
+          "sendButton"
+        ) as HTMLButtonElement;
+        this.addEventListeners();
+      });
+    }
 
     const processingElement = document.createElement("div");
     processingElement.className = "processing";
     processingElement.innerHTML = `
-            <div>Processing your message...</div>
-            <div class="loading-bar">
-                <div class="loading-progress"></div>
-            </div>
-        `;
+      <div>Processing your message...</div>
+      <div class="loading-bar">
+        <div class="loading-progress"></div>
+      </div>
+    `;
 
     this.messages.appendChild(processingElement);
     this.scrollToBottom();
+  }
+
+  private addEventListeners(): void {
+    this.sendButton.addEventListener("click", () => this.sendMessage());
+    this.messageInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        this.sendMessage();
+      }
+    });
   }
 
   private stopProcessing(): void {

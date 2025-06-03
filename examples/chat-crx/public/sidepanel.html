@@ -209,6 +209,33 @@
         transform: none;
       }
 
+      .stop-button {
+        width: 100%;
+        background: #ef4444;
+        color: white;
+        border: none;
+        border-radius: 1.5rem;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+      }
+
+      .stop-button:hover {
+        background: #dc2626;
+        transform: scale(1.02);
+      }
+
+      .stop-button svg {
+        width: 18px;
+        height: 18px;
+      }
+
       @keyframes fadeIn {
         from {
           opacity: 0;
@@ -318,19 +345,19 @@
             </svg>
             Attach This Tab
           </button>
-          <span class="mode-label">Manual</span>
+          <span class="mode-label">Autonomous</span>
         <label class="toggle-switch">
           <input type="checkbox" id="modeToggle" />
           <span class="toggle-slider"></span>
         </label>
-        <span class="mode-label">Autonomous</span>
+        <span class="mode-label">Manual</span>
         </div>
       </div>
 
     <div class="chat-container">
       <div class="messages" id="messages"></div>
 
-      <div class="input-container">
+      <div class="input-container" id="input-container">
         <div class="input-wrapper">
           <input
             type="text"
