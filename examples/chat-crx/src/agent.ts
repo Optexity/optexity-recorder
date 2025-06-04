@@ -116,15 +116,24 @@ export class Agent {
           action.next_action_name == this.ClickElementAction
             ? "Clicking on"
             : "Typing on";
+        let action_description = "";
+        try {
+          action_description = action.next_action.action_description;
+        } catch (error) {
+          action_description = `${prefix} ${await element.innerText()}`;
+        }
+        await highlightElement(page, element, action_description);
 
-        await highlightElement(
-          page,
-          element,
-          `${prefix} ${await element.innerText()}`
-        );
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        console.log("action_description", action_description);
+        console.log("action", action);
+        console.log("action.next_action", action.next_action);
+        console.log("manual_mode", manual_mode);
+        console.log("shouldStop", this.shouldStop);
+        console.log("--------------------------------");
 
         if (!manual_mode && !this.shouldStop) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await removeHighlight(page);
           switch (action.next_action_name) {
             case this.ClickElementAction:
               if (action.next_action.double_click) {
@@ -137,7 +146,6 @@ export class Agent {
               await element.fill(action.next_action.text);
               break;
           }
-          await removeHighlight(page);
         }
       }
 
