@@ -99,15 +99,10 @@ class ChatApp {
     return await response.json();
   }
 
-  private async getNextAction(
-    goal: string,
-    step_number: number,
-    demonstration_id: string | null
-  ) {
+  private async getNextAction(goal: string, step_number: number) {
     const data = {
       goal: goal,
       step_number: step_number,
-      demonstration_id: demonstration_id,
     };
 
     try {
@@ -119,14 +114,10 @@ class ChatApp {
     }
   }
 
-  private async takeAction(goal: string, demonstration_id: string | null) {
+  private async takeAction(goal: string) {
     const eval_page = await this.getEvalPage();
     console.log("Eval page: ", eval_page);
-    const next_action = await this.getNextAction(
-      goal,
-      this.step_number,
-      demonstration_id
-    );
+    const next_action = await this.getNextAction(goal, this.step_number);
     const response = await chrome.runtime.sendMessage({
       type: "TAKE_ACTION",
       goal: goal,
@@ -136,19 +127,13 @@ class ChatApp {
     this.step_number++;
     return {
       response: response,
-      return_demonstration_id: next_action.demonstration_id,
     };
   }
 
   private async takeActions(goal: string) {
     try {
-      let demonstration_id = null;
       while (!this.shouldStop) {
-        const { response, return_demonstration_id } = await this.takeAction(
-          goal,
-          demonstration_id
-        );
-        demonstration_id = return_demonstration_id;
+        const { response } = await this.takeAction(goal);
         if (response && response.done) {
           break;
         } else if (response && !response.success) {
@@ -174,12 +159,12 @@ class ChatApp {
 
     await this.generateResponse(message);
 
-    this.startProcessing();
+    const originalContent = this.startProcessing();
 
     try {
       await this.takeActions(message);
     } finally {
-      this.stopProcessing();
+      this.stopProcessing(originalContent);
     }
   }
 
@@ -199,7 +184,7 @@ class ChatApp {
     this.scrollToBottom();
   }
 
-  private startProcessing(): void {
+  private startProcessing(): string {
     this.isProcessing = true;
     this.shouldStop = false;
     this.sendButton.disabled = true;
@@ -221,12 +206,11 @@ class ChatApp {
     if (stopButton) {
       stopButton.addEventListener("click", () => {
         this.shouldStop = true;
-        this.stopProcessing();
+        this.stopProcessing(originalContent);
         chrome.runtime.sendMessage({
           type: "STOP_PROCESSING",
         });
         // Restore the original input container
-        this.inputContainer.innerHTML = originalContent;
         this.messageInput = document.getElementById(
           "messageInput"
         ) as HTMLInputElement;
@@ -248,6 +232,7 @@ class ChatApp {
 
     this.messages.appendChild(processingElement);
     this.scrollToBottom();
+    return originalContent;
   }
 
   private addEventListeners(): void {
@@ -260,7 +245,7 @@ class ChatApp {
     });
   }
 
-  private stopProcessing(): void {
+  private stopProcessing(originalContent: string): void {
     const processingElement = this.messages.querySelector(".processing");
     if (processingElement) {
       this.messages.removeChild(processingElement);
@@ -268,6 +253,7 @@ class ChatApp {
 
     this.isProcessing = false;
     this.sendButton.disabled = false;
+    this.inputContainer.innerHTML = originalContent;
   }
 
   private async generateResponse(goal: string): Promise<void> {
