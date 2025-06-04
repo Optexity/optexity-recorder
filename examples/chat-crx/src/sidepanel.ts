@@ -252,8 +252,21 @@ class ChatApp {
     }
 
     this.isProcessing = false;
-    this.sendButton.disabled = false;
     this.inputContainer.innerHTML = originalContent;
+    
+    // Re-acquire references to the new DOM elements
+    this.messageInput = document.getElementById("messageInput") as HTMLInputElement;
+    this.sendButton = document.getElementById("sendButton") as HTMLButtonElement;
+    
+    // Make sure the button is enabled
+    this.sendButton.disabled = false;
+    
+    // Re-attach event listeners
+    this.addEventListeners();
+
+    if (!this.isManualMode) {
+      this.step_number = 0;
+    }
   }
 
   private async generateResponse(goal: string): Promise<void> {
