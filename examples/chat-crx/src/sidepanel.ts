@@ -40,7 +40,7 @@ class ChatApp {
     this.modeToggle.addEventListener("change", () => {
       this.isManualMode = this.modeToggle.checked;
       this.addBotMessage(
-        `Switched to ${this.isManualMode ? "Autonomous" : "Manual"} mode`
+        `Switched to ${this.isManualMode ? "Manual" : "Autonomous"} mode`
       );
     });
 
