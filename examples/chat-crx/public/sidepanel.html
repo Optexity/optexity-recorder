@@ -9,41 +9,63 @@
 </head>
 
 <body>
-  <div class="header">
-    <h1>Optexity Chat</h1>
-    <div class="header-controls">
-      <button id="attachButton" class="attach-button">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 11v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8" />
-          <path d="M12 3v12" />
-          <path d="M8 7l4-4 4 4" />
-        </svg>
-        Attach This Tab
-      </button>
-      <div class="toggle-container">
-        <span class="mode-label">Autonomous</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="modeToggle" />
-          <span class="toggle-slider"></span>
-        </label>
-        <span class="mode-label">Manual</span>
+  <div class="tab-container">
+    <div class="tab-header">
+      <button class="tab-button active" data-tab="chat">Optexity Chat</button>
+      <button class="tab-button" data-tab="demos">Recorded Demonstrations</button>
+    </div>
+
+    <div class="tab-content active" id="chat-tab">
+      <div class="header">
+        <div class="header-controls">
+          <button id="attachButton" class="attach-button">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 11v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8" />
+              <path d="M12 3v12" />
+              <path d="M8 7l4-4 4 4" />
+            </svg>
+            Attach This Tab
+          </button>
+          <div class="toggle-container">
+            <span class="mode-label">Autonomous</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="modeToggle" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="mode-label">Manual</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-container">
+        <div class="messages" id="messages"></div>
+
+        <div class="input-container" id="input-container">
+          <div class="input-wrapper">
+            <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off" />
+            <button id="sendButton">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m22 2-7 20-4-9-9-4z" />
+                <path d="M22 2 11 13" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="chat-container">
-    <div class="messages" id="messages"></div>
-
-    <div class="input-container" id="input-container">
-      <div class="input-wrapper">
-        <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off" />
-        <button id="sendButton">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m22 2-7 20-4-9-9-4z" />
-            <path d="M22 2 11 13" />
-          </svg>
-        </button>
+    <div class="tab-content" id="demos-tab">
+      <div class="demos-container">
+        <div class="demos-list">
+          <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M10 8l6 4-6 4V8z"/>
+            </svg>
+            <p>No recorded demonstrations yet</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
