@@ -25,7 +25,7 @@ export const defaultSettings = {
   testIdAttributeName: 'data-testid',
   targetLanguage: 'javascript',
   sidepanel: true,
-  experimental: false,
+  experimental: true,
   playInIncognito: false,
 };
 

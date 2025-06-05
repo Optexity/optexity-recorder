@@ -1059,10 +1059,10 @@ export class Recorder {
       'assertingSnapshot': new TextAssertionTool(this, 'snapshot'),
     };
     this._currentTool = this._tools.none;
-    if (injectedScript.window.top === injectedScript.window) {
-      this.overlay = new Overlay(this);
-      this.overlay.setUIState(this.state);
-    }
+    // if (injectedScript.window.top === injectedScript.window) {
+    //   this.overlay = new Overlay(this);
+    //   this.overlay.setUIState(this.state);
+    // }
     this._stylesheet = new injectedScript.window.CSSStyleSheet();
     this._stylesheet.replaceSync(`
       body[data-pw-cursor=pointer] *, body[data-pw-cursor=pointer] *::after { cursor: pointer !important; }

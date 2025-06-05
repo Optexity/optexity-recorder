@@ -38,7 +38,39 @@ export interface RecorderProps {
   mode: Mode,
   onEditedCode?: (code: string) => any,
   onCursorActivity?: (position: { line: number }) => any,
+  onSaveCode?: () => any,
 }
+
+const ActionCard: React.FC<{ index: number, message: string }> = ({ index, message }) => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    background: '#fff',
+    borderRadius: 12,
+    boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+    padding: '10px 16px',
+    margin: '8px',
+    minWidth: 180,
+    maxWidth: 220,
+    width: '100%',
+    boxSizing: 'border-box',
+  }}>
+    <div style={{
+      width: 28,
+      height: 28,
+      borderRadius: '50%',
+      background: '#eef0ff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#5b6dfa',
+      fontWeight: 700,
+      fontSize: 15,
+      marginRight: 12,
+    }}>{index}</div>
+    <div style={{ fontSize: 15, color: '#23272f', wordBreak: 'break-word' }}>{message}</div>
+  </div>
+);
 
 export const Recorder: React.FC<RecorderProps> = ({
   sources,
@@ -47,6 +79,7 @@ export const Recorder: React.FC<RecorderProps> = ({
   mode,
   onEditedCode,
   onCursorActivity,
+  onSaveCode,
 }) => {
   const [selectedFileId, setSelectedFileId] = React.useState<string | undefined>();
   const [runningFileId, setRunningFileId] = React.useState<string | undefined>();
@@ -88,10 +121,30 @@ export const Recorder: React.FC<RecorderProps> = ({
   window.playwrightSetRunningFile = setRunningFileId;
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
-  React.useLayoutEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: 'center', inline: 'nearest' });
-  }, [messagesEndRef]);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
+  const actionCards = React.useMemo(() => {
+    const lines = source.text.split('\n');
+    let index = 1;
+    const cards: { index: number, message: string }[] = [];
+    for (const line of lines) {
+      if (line.includes('click')) {
+        cards.push({ index: index++, message: 'Click this field.' });
+      } else if (line.includes('fill')) {
+        cards.push({ index: index++, message: 'type text' });
+      }
+    }
+    return cards;
+  }, [source.text]);
+
+  React.useLayoutEffect(() => {
+    if (messagesEndRef.current && containerRef.current) {
+      containerRef.current.scrollTo({
+        top: messagesEndRef.current.offsetTop - containerRef.current.offsetHeight + messagesEndRef.current.offsetHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [actionCards]);
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -113,6 +166,24 @@ export const Recorder: React.FC<RecorderProps> = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [paused]);
+
+  // Add click outside handler for dropdown
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const dropdowns = document.querySelectorAll('.dropdown');
+      dropdowns.forEach(dropdown => {
+        const button = dropdown.querySelector('.toolbar-button');
+        const content = dropdown.querySelector('.dropdown-content');
+        if (button && content && !dropdown.contains(event.target as Node)) {
+          content.classList.remove('show');
+          button.classList.remove('active');
+        }
+      });
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const onEditorChange = React.useCallback((selector: string) => {
     if (mode === 'none' || mode === 'inspecting')
@@ -140,87 +211,158 @@ export const Recorder: React.FC<RecorderProps> = ({
       window.dispatch({ event: 'highlightRequested', params: { ariaTemplate: fragment } });
   }, [mode]);
 
-  return <div className='recorder'>
-    <Toolbar>
-      <ToolbarButton icon='circle-large-filled' title='Record' toggled={mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'} onClick={() => {
-        window.dispatch({ event: 'setMode', params: { mode: mode === 'none' || mode === 'standby' || mode === 'inspecting' ? 'recording' : 'standby' } });
-      }}>Record</ToolbarButton>
-      <ToolbarSeparator />
-      <ToolbarButton icon='inspect' title='Pick locator' toggled={mode === 'inspecting' || mode === 'recording-inspecting'} onClick={() => {
-        const newMode = {
-          'inspecting': 'standby',
-          'none': 'inspecting',
-          'standby': 'inspecting',
-          'recording': 'recording-inspecting',
-          'recording-inspecting': 'recording',
-          'assertingText': 'recording-inspecting',
-          'assertingVisibility': 'recording-inspecting',
-          'assertingValue': 'recording-inspecting',
-          'assertingSnapshot': 'recording-inspecting',
-        }[mode];
-        window.dispatch({ event: 'setMode', params: { mode: newMode } }).catch(() => { });
-      }}></ToolbarButton>
-      <ToolbarButton icon='eye' title='Assert visibility' toggled={mode === 'assertingVisibility'} disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'} onClick={() => {
-        window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingVisibility' ? 'recording' : 'assertingVisibility' } });
-      }}></ToolbarButton>
-      <ToolbarButton icon='whole-word' title='Assert text' toggled={mode === 'assertingText'} disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'} onClick={() => {
-        window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingText' ? 'recording' : 'assertingText' } });
-      }}></ToolbarButton>
-      <ToolbarButton icon='symbol-constant' title='Assert value' toggled={mode === 'assertingValue'} disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'} onClick={() => {
-        window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingValue' ? 'recording' : 'assertingValue' } });
-      }}></ToolbarButton>
-      <ToolbarButton icon='gist' title='Assert snapshot' toggled={mode === 'assertingSnapshot'} disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'} onClick={() => {
-        window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingSnapshot' ? 'recording' : 'assertingSnapshot' } });
-      }}></ToolbarButton>
-      <ToolbarSeparator />
-      <ToolbarButton icon='files' title='Copy' disabled={!source || !source.text} onClick={() => {
-        copy(source.text);
-      }}></ToolbarButton>
-      <ToolbarButton icon='debug-continue' title='Resume (F8)' ariaLabel='Resume' disabled={!paused} onClick={() => {
-        window.dispatch({ event: 'resume' });
-      }}></ToolbarButton>
-      <ToolbarButton icon='debug-pause' title='Pause (F8)' ariaLabel='Pause' disabled={paused} onClick={() => {
-        window.dispatch({ event: 'pause' });
-      }}></ToolbarButton>
-      <ToolbarButton icon='debug-step-over' title='Step over (F10)' ariaLabel='Step over' disabled={!paused} onClick={() => {
-        window.dispatch({ event: 'step' });
-      }}></ToolbarButton>
-      <div style={{ flex: 'auto' }}></div>
-      <div>Target:</div>
-      <SourceChooser fileId={fileId} sources={sources} setFileId={fileId => {
-        setSelectedFileId(fileId);
-        window.dispatch({ event: 'fileChanged', params: { file: fileId } });
-      }} />
-      <ToolbarButton icon='clear-all' title='Clear' disabled={!source || !source.text} onClick={() => {
-        window.dispatch({ event: 'clear' });
-      }}></ToolbarButton>
-      <ToolbarButton icon='color-mode' title='Toggle color mode' toggled={false} onClick={() => toggleTheme()}></ToolbarButton>
-    </Toolbar>
-    <SplitView
-      sidebarSize={200}
-      main={<CodeMirrorWrapper text={source.text} language={source.language} highlight={source.highlight} revealLine={source.revealLine} readOnly={source.id !== 'playwright-test'} onChange={onEditedCode} onCursorActivity={onCursorActivity} lineNumbers={true} />}
-      sidebar={<TabbedPane
-        rightToolbar={selectedTab === 'locator' || selectedTab === 'aria' ? [<ToolbarButton key={1} icon='files' title='Copy' onClick={() => copy((selectedTab === 'locator' ? locator : ariaSnapshot) || '')} />] : []}
-        tabs={[
-          {
-            id: 'locator',
-            title: 'Locator',
-            render: () => <CodeMirrorWrapper text={locator} placeholder='Type locator to inspect' language={source.language} focusOnChange={selectorFocusOnChange} onChange={onEditorChange} wrapLines={true} />
-          },
-          {
-            id: 'log',
-            title: 'Log',
-            render: () => <CallLogView language={source.language} log={Array.from(log.values())} />
-          },
-          {
-            id: 'aria',
-            title: 'Aria',
-            render: () => <CodeMirrorWrapper text={ariaSnapshot || ''} placeholder='Type aria template to match' language={'yaml'} onChange={onAriaEditorChange} highlight={ariaSnapshotErrors} wrapLines={true} />
-          },
-        ]}
-        selectedTab={selectedTab}
-        setSelectedTab={setSelectedTab}
-      />}
-    />
+  return <div className='recorder' style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div style={{ justifyContent: 'space-between', padding: '0 16px' }}>
+      <Toolbar>
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+          <ToolbarButton
+            icon={paused ? 'play' : 'debug-pause'}
+            title={paused ? 'Resume' : 'Pause'}
+            toggled={mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'}
+            onClick={() => {
+              window.dispatch({ event: 'setMode', params: { mode: mode === 'none' || mode === 'standby' || mode === 'inspecting' ? 'recording' : 'standby' } });
+            }}
+            className="main-button"
+            style={{
+              background: mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'
+                ? 'var(--vscode-button-background)'
+                : 'var(--vscode-button-secondaryBackground)',
+              color: mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'
+                ? 'var(--vscode-button-foreground)'
+                : 'var(--vscode-button-secondaryForeground)',
+            }}
+          >
+            {paused ? 'Resume' : 'Pause'}
+          </ToolbarButton>
+          <ToolbarButton
+            icon="check"
+            title="Complete recording"
+            onClick={onSaveCode}
+            className="main-button"
+            style={{
+              background: 'var(--vscode-button-secondaryBackground)',
+              color: 'var(--vscode-button-secondaryForeground)',
+            }}
+          >
+            Complete
+          </ToolbarButton>
+          <div className="dropdown">
+            <ToolbarButton
+              icon="more"
+              title="More options"
+              style={{
+                padding: '4px 8px',
+                opacity: 0.8,
+                fontSize: '16px'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const dropdownContent = e.currentTarget.nextElementSibling;
+                const isActive = e.currentTarget.classList.contains('active');
+                // Close all other dropdowns
+                document.querySelectorAll('.dropdown-content.show').forEach(el => {
+                  if (el !== dropdownContent) el.classList.remove('show');
+                });
+                document.querySelectorAll('.toolbar-button.active').forEach(el => {
+                  if (el !== e.currentTarget) el.classList.remove('active');
+                });
+                // Toggle current dropdown
+                if (dropdownContent) {
+                  dropdownContent.classList.toggle('show');
+                  e.currentTarget.classList.toggle('active');
+                }
+              }}
+            />
+            <div className="dropdown-content">
+              <ToolbarButton
+                icon='inspect'
+                title='Pick locator'
+                toggled={mode === 'inspecting' || mode === 'recording-inspecting'}
+                onClick={() => {
+                  const newMode = {
+                    'inspecting': 'standby',
+                    'none': 'inspecting',
+                    'standby': 'inspecting',
+                    'recording': 'recording-inspecting',
+                    'recording-inspecting': 'recording',
+                    'assertingText': 'recording-inspecting',
+                    'assertingVisibility': 'recording-inspecting',
+                    'assertingValue': 'recording-inspecting',
+                    'assertingSnapshot': 'recording-inspecting',
+                  }[mode];
+                  window.dispatch({ event: 'setMode', params: { mode: newMode } }).catch(() => { });
+                }}
+              >
+                Pick locator
+              </ToolbarButton>
+              <ToolbarButton
+                icon='eye'
+                title='Assert visibility'
+                toggled={mode === 'assertingVisibility'}
+                disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+                onClick={() => {
+                  window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingVisibility' ? 'recording' : 'assertingVisibility' } });
+                }}
+              >
+                Assert visibility
+              </ToolbarButton>
+              <ToolbarButton
+                icon='whole-word'
+                title='Assert text'
+                toggled={mode === 'assertingText'}
+                disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+                onClick={() => {
+                  window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingText' ? 'recording' : 'assertingText' } });
+                }}
+              >
+                Assert text
+              </ToolbarButton>
+              <ToolbarButton
+                icon='symbol-constant'
+                title='Assert value'
+                toggled={mode === 'assertingValue'}
+                disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+                onClick={() => {
+                  window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingValue' ? 'recording' : 'assertingValue' } });
+                }}
+              >
+                Assert value
+              </ToolbarButton>
+              <ToolbarButton
+                icon='gist'
+                title='Assert snapshot'
+                toggled={mode === 'assertingSnapshot'}
+                disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+                onClick={() => {
+                  window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingSnapshot' ? 'recording' : 'assertingSnapshot' } });
+                }}
+              >
+                Assert snapshot
+              </ToolbarButton>
+            </div>
+          </div>
+        </div>
+      </Toolbar>
+    </div>
+    <div
+      ref={containerRef}
+      style={{
+        flex: '1 1 auto',
+        minHeight: 0,
+        padding: '0 16px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignContent: 'flex-start',
+        gap: '0',
+        overflowY: 'auto',
+        width: '100vw',
+        boxSizing: 'border-box',
+      }}
+    >
+      {actionCards.map(card => (
+        <ActionCard key={card.index} index={card.index} message={card.message} />
+      ))}
+      <div ref={messagesEndRef} />
+    </div>
   </div>;
 };
