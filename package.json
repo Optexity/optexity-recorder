@@ -40,6 +40,7 @@
   "workspaces": [
     "examples/recorder-crx",
     "examples/todomvc-crx",
+    "examples/chat-crx",
     "tests"
   ],
   "exports": {
