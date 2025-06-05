@@ -1,4 +1,4 @@
-import { Locator, Page } from "@playwright/test";
+import { Locator, Page } from "playwright-crx";
 
 // Styles for highlights
 const styles = {

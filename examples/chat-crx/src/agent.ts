@@ -1,6 +1,5 @@
-import { crx, CrxApplication } from "playwright-crx";
+import { crx, CrxApplication, Locator, Page } from "playwright-crx";
 import assert from "assert";
-import { Locator, Page } from "playwright-crx";
 import { highlightDone, highlightElement, removeHighlight } from "./highlight";
 // @ts-ignore
 import { buildDomTree } from "./buildDomTree";
