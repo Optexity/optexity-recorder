@@ -135,9 +135,7 @@ export class ChatApp {
       manual_mode: this.isManualMode,
     });
     this.step_number++;
-    return {
-      response: response,
-    };
+    return response;
   }
 
   private async takeActions(goal: string) {
@@ -154,7 +152,8 @@ export class ChatApp {
           };
           return; // Return instead of break to prevent finally block execution
         }
-        const { response } = await this.takeAction(goal, demoId);
+        const response = await this.takeAction(goal, demoId);
+
         if (response && response.done) {
           break;
         } else if (response && !response.success) {
@@ -163,6 +162,17 @@ export class ChatApp {
         }
         if (this.isManualMode) {
           break;
+        }
+        if (response && response.autonomous_mode_ask_user_to_fill) {
+          const pauseButton = document.getElementById(
+            "pauseButton"
+          ) as HTMLButtonElement;
+          if (pauseButton) {
+            pauseButton.click();
+          }
+          this.addBotMessage(
+            "Fill the field which is highlighted in the page and then resume the process."
+          );
         }
         await new Promise((r) => setTimeout(r, 1000));
       }

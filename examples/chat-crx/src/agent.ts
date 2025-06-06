@@ -151,9 +151,9 @@ export class Agent {
               break;
             case this.InputTextAction:
               const input_action = next_action as InputTextAction;
-              if (input_action.text == null)
+              if (input_action.text == null || input_action.text.trim() == "")
                 autonomous_mode_ask_user_to_fill = true;
-              else await element.fill(input_action.text);
+              else await element.fill(input_action.text.trim());
 
               break;
           }
