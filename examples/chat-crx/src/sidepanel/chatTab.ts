@@ -1,25 +1,48 @@
 import { NextStepResponse } from "../schemas/demonstration";
+import {
+  createUserMessage,
+  createBotMessage,
+  processingTemplate,
+} from "../templates/chatMessage";
+import { createControlButtons } from "../templates/controlButtons";
+
+interface StoppedState {
+  demoId: string | null;
+  goal: string | null;
+  step_number: number | null;
+}
+
 export class ChatApp {
-  private messages: HTMLElement;
-  private messageInput: HTMLInputElement;
-  private sendButton: HTMLButtonElement;
-  private modeToggle: HTMLInputElement;
-  private attachButton: HTMLButtonElement;
+  private messages!: HTMLElement;
+  private messageInput!: HTMLInputElement;
+  private sendButton!: HTMLButtonElement;
+  private modeToggle!: HTMLInputElement;
+  private attachButton!: HTMLButtonElement;
+  private inputContainer!: HTMLElement;
+
+  // State management
   private isProcessing: boolean = false;
   private step_number: number = 0;
   private isManualMode: boolean = false;
-  private api_url: string = "http://localhost:8000/api/v1";
   private shouldStop: boolean = false;
   private isPaused: boolean = false;
-  private inputContainer: HTMLElement;
-  private stoppedState: Record<string, any> = {
+  private originalInputContent: string = "";
+  private stoppedState: StoppedState = {
     demoId: null,
     goal: null,
     step_number: null,
   };
-  private originalInputContent: string = "";
+
+  // Configuration
+  private readonly api_url: string = "http://localhost:8000/api/v1";
 
   constructor() {
+    this.initializeElements();
+    this.attachEventListeners();
+    this.addBotMessage("Hello! I'm Optexity AI. How can I help you today?");
+  }
+
+  private initializeElements(): void {
     this.messages = document.getElementById("messages") as HTMLElement;
     this.messageInput = document.getElementById(
       "messageInput"
@@ -34,8 +57,9 @@ export class ChatApp {
     this.inputContainer = document.getElementById(
       "input-container"
     ) as HTMLElement;
+  }
 
-    // Add event listeners
+  private attachEventListeners(): void {
     this.sendButton.addEventListener("click", () => this.sendMessage());
     this.messageInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -44,7 +68,6 @@ export class ChatApp {
       }
     });
 
-    // Add mode toggle listener
     this.modeToggle.addEventListener("change", () => {
       this.isManualMode = this.modeToggle.checked;
       this.addBotMessage(
@@ -52,19 +75,15 @@ export class ChatApp {
       );
     });
 
-    // Add attach button listener
     this.attachButton.addEventListener("click", () => this.attachCurrentTab());
-
-    // Add welcome message
-    this.addBotMessage("Hello! I'm Optexity AI. How can I help you today?");
   }
 
-  private async attachCurrentTab() {
+  private async attachCurrentTab(): Promise<void> {
     try {
       const response = await chrome.runtime.sendMessage({
         type: "ATTACH_TAB",
       });
-      if (response && response.success) {
+      if (response?.success) {
         this.addBotMessage("Successfully attached to the current tab!");
       } else {
         this.addBotMessage(
@@ -79,45 +98,36 @@ export class ChatApp {
     }
   }
 
-  private async getEvalPage() {
+  private async getEvalPage(): Promise<any> {
     const response = await chrome.runtime.sendMessage({
       type: "GET_EVAL_PAGE",
     });
-    if (response && response.eval_page) {
+    if (response?.eval_page) {
       return response.eval_page;
-    } else {
-      console.error("Error getting eval page:", response.error);
-      return null;
     }
+    console.error("Error getting eval page:", response.error);
+    return null;
   }
 
   private async getNextStepResponse(
     goal: string,
     step_number: number,
     demoId: string | null
-  ) {
+  ): Promise<NextStepResponse> {
     const params: Record<string, string> = {
-      goal: goal,
+      goal,
       step_number: step_number.toString(),
     };
-    if (demoId !== null && demoId !== "") {
+    if (demoId) {
       params.demonstration_id = demoId;
     }
 
-    try {
-      const query = new URLSearchParams(params).toString();
-      const response = await fetch(`${this.api_url}/get_next_step?${query}`, {
-        method: "GET",
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const next_step_response: NextStepResponse = await response.json();
-      return next_step_response;
-    } catch (error) {
-      console.error("Error getting next step:", error);
-      throw error;
+    const query = new URLSearchParams(params).toString();
+    const response = await fetch(`${this.api_url}/get_next_step?${query}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    return await response.json();
   }
 
   private async takeAction(goal: string, demoId: string | null) {
@@ -139,31 +149,25 @@ export class ChatApp {
   }
 
   private async takeActions(goal: string) {
-    // Check if there's a demonstration ID in the input field
     const demoId = this.messageInput.dataset.demoId || null;
     try {
       while (!this.shouldStop) {
         if (this.isPaused) {
-          // Save state before breaking the loop
-          this.stoppedState = {
-            demoId,
-            goal,
-            step_number: this.step_number,
-          };
-          return; // Return instead of break to prevent finally block execution
+          this.stoppedState = { demoId, goal, step_number: this.step_number };
+          return;
         }
         const response = await this.takeAction(goal, demoId);
 
-        if (response && response.done) {
-          break;
-        } else if (response && !response.success) {
-          console.warn("Playwright action failed:", response.error);
-          break;
-        }
-        if (this.isManualMode) {
+        if (response?.done || !response?.success) {
+          if (!response?.success) {
+            console.warn("Playwright action failed:", response.error);
+          }
           break;
         }
-        if (response && response.autonomous_mode_ask_user_to_fill) {
+
+        if (this.isManualMode) break;
+
+        if (response?.autonomous_mode_ask_user_to_fill) {
           const pauseButton = document.getElementById(
             "pauseButton"
           ) as HTMLButtonElement;
@@ -174,62 +178,70 @@ export class ChatApp {
             "Fill the field which is highlighted in the page and then resume the process."
           );
         }
+
         await new Promise((r) => setTimeout(r, 1000));
       }
     } catch (error) {
       console.error("Failed to communicate with background script:", error);
     } finally {
-      // Execute cleanup regardless of pause state when stopping
       if (this.shouldStop || !this.isPaused) {
-        if (demoId) {
-          delete this.messageInput.dataset.demoId;
-        }
-        this.stoppedState = {
-          demoId: null,
-          goal: null,
-          step_number: null,
-        };
-        this.removeProcessingElement();
-        this.restoreInputContainer();
+        this.cleanup(demoId);
       }
     }
   }
 
-  private restoreInputContainer() {
-    // Execute cleanup regardless of pause state when stopping
+  private cleanup(demoId: string | null): void {
+    if (demoId) {
+      delete this.messageInput.dataset.demoId;
+    }
+    this.stoppedState = {
+      demoId: null,
+      goal: null,
+      step_number: null,
+    };
+    this.removeProcessingElement();
+    this.restoreInputContainer();
+  }
+
+  private restoreInputContainer(): void {
     if (this.shouldStop || !this.isPaused) {
       this.isProcessing = false;
       this.inputContainer.innerHTML = this.originalInputContent;
-
-      // Re-acquire references to the new DOM elements
       this.messageInput = document.getElementById(
         "messageInput"
       ) as HTMLInputElement;
       this.sendButton = document.getElementById(
         "sendButton"
       ) as HTMLButtonElement;
-
-      // Make sure the button is enabled
       this.sendButton.disabled = false;
-
-      // Re-attach event listeners
-      this.addEventListeners();
-
+      this.attachEventListeners();
       if (!this.isManualMode) {
         this.step_number = 0;
       }
     }
   }
 
-  private async sendMessage() {
+  private async resumeActions(): Promise<void> {
+    if (this.stoppedState.goal) {
+      this.messageInput.dataset.demoId = this.stoppedState.demoId!;
+      this.step_number = this.stoppedState.step_number!;
+      const goal = this.stoppedState.goal;
+      this.stoppedState = {
+        demoId: null,
+        goal: null,
+        step_number: null,
+      };
+      await this.takeActions(goal);
+    }
+  }
+
+  private async sendMessage(): Promise<void> {
     const message = this.messageInput.value.trim();
     if (!message || this.isProcessing) return;
 
     this.addUserMessage(message);
     this.messageInput.value = "";
-
     await this.generateResponse(message);
-
     this.startProcessing();
 
     try {
@@ -239,36 +251,28 @@ export class ChatApp {
     }
   }
 
-  private addUserMessage(message: string) {
+  private addUserMessage(message: string): void {
     const messageElement = document.createElement("div");
-    messageElement.className = "message user";
-    messageElement.textContent = message;
-    this.messages.appendChild(messageElement);
+    messageElement.innerHTML = createUserMessage(message);
+    this.messages.appendChild(messageElement.firstElementChild!);
     this.scrollToBottom();
   }
 
-  private addBotMessage(message: string) {
+  private addBotMessage(message: string): void {
     const messageElement = document.createElement("div");
-    messageElement.className = "message bot";
-    messageElement.textContent = message;
-    this.messages.appendChild(messageElement);
+    messageElement.innerHTML = createBotMessage(message);
+    this.messages.appendChild(messageElement.firstElementChild!);
     this.scrollToBottom();
   }
 
-  private addProcessingElement() {
-    const processingElement = document.createElement("div");
-    processingElement.className = "processing";
-    processingElement.innerHTML = `
-        <div>Processing your message...</div>
-        <div class="loading-bar">
-          <div class="loading-progress"></div>
-        </div>
-      `;
-    this.messages.appendChild(processingElement);
+  private addProcessingElement(): void {
+    const element = document.createElement("div");
+    element.innerHTML = processingTemplate;
+    this.messages.appendChild(element.firstElementChild!);
     this.scrollToBottom();
   }
 
-  private removeProcessingElement() {
+  private removeProcessingElement(): void {
     const processingElement = this.messages.querySelector(".processing");
     if (processingElement) {
       this.messages.removeChild(processingElement);
@@ -278,7 +282,7 @@ export class ChatApp {
   private updatePauseButtonState(
     pauseButton: HTMLButtonElement,
     isPaused: boolean
-  ) {
+  ): void {
     const pauseIcon = document.getElementById("pauseIcon");
     if (pauseIcon) {
       if (isPaused) {
@@ -296,20 +300,6 @@ export class ChatApp {
     }
   }
 
-  private async resumeActions() {
-    if (this.stoppedState.goal) {
-      this.messageInput.dataset.demoId = this.stoppedState.demoId;
-      this.step_number = this.stoppedState.step_number;
-      const goal = this.stoppedState.goal;
-      this.stoppedState = {
-        demoId: null,
-        goal: null,
-        step_number: null,
-      };
-      await this.takeActions(goal);
-    }
-  }
-
   private startProcessing(): void {
     this.isProcessing = true;
     this.shouldStop = false;
@@ -320,31 +310,13 @@ export class ChatApp {
       step_number: null,
     };
     this.sendButton.disabled = true;
-
-    // Store original content
     this.originalInputContent = this.inputContainer.innerHTML;
+    this.inputContainer.innerHTML = createControlButtons(this.isManualMode);
+    this.setupControlButtons();
+    this.addProcessingElement();
+  }
 
-    // Replace input container with pause and stop buttons
-    this.inputContainer.innerHTML = `
-        <div class="input-wrapper" style="display: flex; gap: 8px;">
-          <button id="pauseButton" class="control-button pause-button" style="background: #4a5568; color: white; border: none; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; ${
-            this.isManualMode ? "opacity: 0.5; pointer-events: none;" : ""
-          }">
-            <svg id="pauseIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="6" y="4" width="4" height="16"/>
-              <rect x="14" y="4" width="4" height="16"/>
-            </svg>
-            <span>Pause</span>
-          </button>
-          <button id="stopButton" class="control-button stop-button" style="background: #e53e3e; color: white; border: none; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: background 0.2s;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            </svg>
-            <span>Stop</span>
-          </button>
-        </div>
-      `;
-
+  private setupControlButtons(): void {
     const pauseButton = document.getElementById(
       "pauseButton"
     ) as HTMLButtonElement;
@@ -353,10 +325,8 @@ export class ChatApp {
     if (pauseButton) {
       pauseButton.addEventListener("click", async () => {
         if (this.isManualMode) return;
-
         this.isPaused = !this.isPaused;
         this.updatePauseButtonState(pauseButton, this.isPaused);
-
         if (!this.isPaused) {
           await this.resumeActions();
         }
@@ -366,7 +336,6 @@ export class ChatApp {
     if (stopButton) {
       stopButton.addEventListener("click", () => {
         this.shouldStop = true;
-        // Force cleanup and restore input container when stopping from paused state
         this.isPaused = false;
         this.removeProcessingElement();
         this.restoreInputContainer();
@@ -375,8 +344,6 @@ export class ChatApp {
         });
       });
     }
-
-    this.addProcessingElement();
   }
 
   private stopProcessing(): void {
@@ -384,21 +351,11 @@ export class ChatApp {
     this.restoreInputContainer();
   }
 
-  private addEventListeners(): void {
-    this.sendButton.addEventListener("click", () => this.sendMessage());
-    this.messageInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        this.sendMessage();
-      }
-    });
-  }
-
   private async generateResponse(goal: string): Promise<void> {
     this.addBotMessage(`Taking action for goal: ${goal}`);
   }
 
-  private scrollToBottom() {
+  private scrollToBottom(): void {
     this.messages.scrollTop = this.messages.scrollHeight;
   }
 }
