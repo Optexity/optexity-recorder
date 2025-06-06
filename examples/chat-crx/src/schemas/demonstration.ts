@@ -16,7 +16,7 @@ export interface ClickElementAction {
 
 export interface InputTextAction {
   index: number;
-  text: string;
+  text: string | null;
   xpath: string | null;
   locators: Locator[];
   fixed: boolean | null;

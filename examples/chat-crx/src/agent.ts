@@ -7,7 +7,6 @@ import {
   ClickElementAction,
   InputTextAction,
   NextStepResponse,
-  DoneAction,
 } from "./schemas/demonstration";
 
 type BuildDomTreeArgs = {
@@ -114,14 +113,9 @@ export class Agent {
         return { success: true, done: true, ask_user_to_take_action: false };
       }
 
-      let next_action: ClickElementAction | InputTextAction | DoneAction;
-      if (next_action_name == this.ClickElementAction) {
-        next_action = next_step_response.next_action as ClickElementAction;
-      } else if (next_action_name == this.InputTextAction) {
-        next_action = next_step_response.next_action as InputTextAction;
-      } else {
-        throw new Error(`Unknown next action name: ${next_action_name}`);
-      }
+      let next_action = next_step_response.next_action as
+        | ClickElementAction
+        | InputTextAction;
 
       if (next_action.locators == null || next_action.locators.length == 0)
         return { success: false, done: false, ask_user_to_take_action: false };
@@ -129,6 +123,8 @@ export class Agent {
       const { element, is_locator_fixed } = this.get_element(next_action, page);
       if (element == null)
         return { success: false, done: false, ask_user_to_take_action: false };
+
+      let autonomous_mode_ask_user_to_fill = false;
 
       if (is_locator_fixed) {
         const prefix =
@@ -146,14 +142,19 @@ export class Agent {
           await removeHighlight(page);
           switch (next_action_name) {
             case this.ClickElementAction:
-              if ((next_action as ClickElementAction).double_click) {
+              const click_action = next_action as ClickElementAction;
+              if (click_action.double_click) {
                 await element.dblclick();
               } else {
                 await element.click();
               }
               break;
             case this.InputTextAction:
-              await element.fill((next_action as InputTextAction).text);
+              const input_action = next_action as InputTextAction;
+              if (input_action.text == null)
+                autonomous_mode_ask_user_to_fill = true;
+              else await element.fill(input_action.text);
+
               break;
           }
         }
@@ -165,6 +166,7 @@ export class Agent {
         success: true,
         done: false,
         ask_user_to_take_action: ask_user_to_take_action,
+        autonomous_mode_ask_user_to_fill: autonomous_mode_ask_user_to_fill,
       };
     } catch (error) {
       console.error("Error executing playwright action:", error);
