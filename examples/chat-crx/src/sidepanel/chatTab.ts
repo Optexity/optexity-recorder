@@ -179,8 +179,8 @@ export class ChatApp {
     } catch (error) {
       console.error("Failed to communicate with background script:", error);
     } finally {
-      // Only execute if we're actually stopping (not pausing)
-      if (!this.isPaused) {
+      // Execute cleanup regardless of pause state when stopping
+      if (this.shouldStop || !this.isPaused) {
         if (demoId) {
           delete this.messageInput.dataset.demoId;
         }
@@ -196,8 +196,8 @@ export class ChatApp {
   }
 
   private restoreInputContainer() {
-    // Only restore if we're not paused
-    if (!this.isPaused) {
+    // Execute cleanup regardless of pause state when stopping
+    if (this.shouldStop || !this.isPaused) {
       this.isProcessing = false;
       this.inputContainer.innerHTML = this.originalInputContent;
 
@@ -366,12 +366,10 @@ export class ChatApp {
     if (stopButton) {
       stopButton.addEventListener("click", () => {
         this.shouldStop = true;
+        // Force cleanup and restore input container when stopping from paused state
         this.isPaused = false;
-        this.stoppedState = {
-          demoId: null,
-          goal: null,
-          step_number: null,
-        };
+        this.removeProcessingElement();
+        this.restoreInputContainer();
         chrome.runtime.sendMessage({
           type: "STOP_PROCESSING",
         });
