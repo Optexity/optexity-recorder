@@ -6,6 +6,8 @@ export class RecordedDemoTab {
   private tabButtons;
   private tabContents;
   private demosList: HTMLElement;
+  private messageInput: HTMLInputElement;
+  private sendButton: HTMLButtonElement;
   private api_url: string =
     "http://localhost:8000/api/v1/dashboard/get_demonstrations";
   private demonstrations: Demonstration[] = [];
@@ -14,6 +16,8 @@ export class RecordedDemoTab {
     this.tabButtons = document.querySelectorAll(".tab-button");
     this.tabContents = document.querySelectorAll(".tab-content");
     this.demosList = document.getElementById("demos-list") as HTMLElement;
+    this.messageInput = document.getElementById("messageInput") as HTMLInputElement;
+    this.sendButton = document.getElementById("sendButton") as HTMLButtonElement;
 
     // Add click handlers to tab buttons
     this.tabButtons.forEach((button: Element) => {
@@ -84,8 +88,17 @@ export class RecordedDemoTab {
   private handleReplayClick(demoId: string) {
     const demo = this.demonstrations.find((d) => d.demonstration_id === demoId);
     if (demo) {
-      console.log("Replaying demonstration:", demo);
-      // Add replay logic here
+      // Switch to chat tab
+      this.switchTab("chat");
+      
+      // Set the message input value
+      this.messageInput.value = demo.goal;
+      
+      // Store the demonstration ID in a data attribute
+      this.messageInput.dataset.demoId = demo.demonstration_id;
+      
+      // Trigger the send button click
+      this.sendButton.click();
     }
   }
 

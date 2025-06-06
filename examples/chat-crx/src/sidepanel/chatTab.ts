@@ -84,11 +84,18 @@ export class ChatApp {
     }
   }
 
-  private async getNextStepResponse(goal: string, step_number: number) {
-    const params = {
+  private async getNextStepResponse(
+    goal: string,
+    step_number: number,
+    demoId: string | undefined
+  ) {
+    const params: Record<string, string> = {
       goal: goal,
       step_number: step_number.toString(),
     };
+    if (demoId) {
+      params.demonstration_id = demoId;
+    }
 
     try {
       const query = new URLSearchParams(params).toString();
@@ -106,12 +113,13 @@ export class ChatApp {
     }
   }
 
-  private async takeAction(goal: string) {
+  private async takeAction(goal: string, demoId: string | undefined) {
     const eval_page = await this.getEvalPage();
     console.log("Eval page: ", eval_page);
     const next_step_response = await this.getNextStepResponse(
       goal,
-      this.step_number
+      this.step_number,
+      demoId
     );
     const response = await chrome.runtime.sendMessage({
       type: "TAKE_ACTION",
@@ -127,8 +135,13 @@ export class ChatApp {
 
   private async takeActions(goal: string) {
     try {
+      // Check if there's a demonstration ID in the input field
+      const demoId = this.messageInput.dataset.demoId;
+      if (demoId) {
+        delete this.messageInput.dataset.demoId;
+      }
       while (!this.shouldStop) {
-        const { response } = await this.takeAction(goal);
+        const { response } = await this.takeAction(goal, demoId);
         if (response && response.done) {
           break;
         } else if (response && !response.success) {
