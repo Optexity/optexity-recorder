@@ -1,3 +1,4 @@
+import { NextStepResponse } from "../schemas/demonstration";
 export class ChatApp {
   private messages: HTMLElement;
   private messageInput: HTMLInputElement;
@@ -83,31 +84,22 @@ export class ChatApp {
     }
   }
 
-  private async post_request(end_point: string, data: any) {
-    const response = await fetch(`${this.api_url}/${end_point}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer test",
-      },
-      body: JSON.stringify(data),
-    });
-    // ## TODO: convert to object
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  }
-
-  private async getNextAction(goal: string, step_number: number) {
-    const data = {
+  private async getNextStepResponse(goal: string, step_number: number) {
+    const params = {
       goal: goal,
-      step_number: step_number,
+      step_number: step_number.toString(),
     };
 
     try {
-      const response = await this.post_request("get_next_step", data);
-      return response;
+      const query = new URLSearchParams(params).toString();
+      const response = await fetch(`${this.api_url}/get_next_step?${query}`, {
+        method: "GET",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const next_step_response: NextStepResponse = await response.json();
+      return next_step_response;
     } catch (error) {
       console.error("Error getting next step:", error);
       throw error;
@@ -117,11 +109,14 @@ export class ChatApp {
   private async takeAction(goal: string) {
     const eval_page = await this.getEvalPage();
     console.log("Eval page: ", eval_page);
-    const next_action = await this.getNextAction(goal, this.step_number);
+    const next_step_response = await this.getNextStepResponse(
+      goal,
+      this.step_number
+    );
     const response = await chrome.runtime.sendMessage({
       type: "TAKE_ACTION",
       goal: goal,
-      next_action: next_action,
+      next_step_response: next_step_response,
       manual_mode: this.isManualMode,
     });
     this.step_number++;
@@ -281,4 +276,3 @@ export class ChatApp {
     this.messages.scrollTop = this.messages.scrollHeight;
   }
 }
-

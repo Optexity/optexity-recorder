@@ -3,6 +3,12 @@ import assert from "assert";
 import { highlightDone, highlightElement, removeHighlight } from "./highlight";
 // @ts-ignore
 import { buildDomTree } from "./buildDomTree";
+import {
+  ClickElementAction,
+  InputTextAction,
+  NextStepResponse,
+  DoneAction,
+} from "./schemas/demonstration";
 
 type BuildDomTreeArgs = {
   doHighlightElements: boolean;
@@ -51,16 +57,20 @@ export class Agent {
     return this.currentTabId;
   }
 
-  private get_element(action: any, page: Page) {
+  private get_element(
+    action: ClickElementAction | InputTextAction,
+    page: Page
+  ) {
     let element: Locator | Page = page;
     let is_locator_fixed = true;
-    for (const locator of action.next_action.locators) {
+    for (const locator of action.locators) {
       is_locator_fixed = is_locator_fixed && locator.fixed;
       switch (locator.locator_type) {
         case "getByText":
           element = element.getByText(locator.first_arg, locator.options);
           break;
         case "getByRole":
+          // @ts-ignore
           element = element.getByRole(locator.first_arg, locator.options);
           break;
         case "getByLabel":
@@ -91,58 +101,59 @@ export class Agent {
     return { element: element as Locator, is_locator_fixed };
   }
 
-  async takeAction(action: any, manual_mode: boolean) {
+  async takeAction(next_step_response: NextStepResponse, manual_mode: boolean) {
     this.shouldStop = false;
     try {
       const page = await this.currentCrxApp.attach(this.currentTabId);
       await removeHighlight(page);
-      if (action.next_action_name == this.DoneAction) {
+
+      const next_action_name = next_step_response.next_action_name;
+
+      if (next_action_name == this.DoneAction) {
         await highlightDone(page);
         return { success: true, done: true, ask_user_to_take_action: false };
       }
-      if (
-        action.next_action.locators == null ||
-        action.next_action.locators.length == 0
-      )
+
+      let next_action: ClickElementAction | InputTextAction | DoneAction;
+      if (next_action_name == this.ClickElementAction) {
+        next_action = next_step_response.next_action as ClickElementAction;
+      } else if (next_action_name == this.InputTextAction) {
+        next_action = next_step_response.next_action as InputTextAction;
+      } else {
+        throw new Error(`Unknown next action name: ${next_action_name}`);
+      }
+
+      if (next_action.locators == null || next_action.locators.length == 0)
         return { success: false, done: false, ask_user_to_take_action: false };
 
-      const { element, is_locator_fixed } = this.get_element(action, page);
+      const { element, is_locator_fixed } = this.get_element(next_action, page);
       if (element == null)
         return { success: false, done: false, ask_user_to_take_action: false };
 
       if (is_locator_fixed) {
         const prefix =
-          action.next_action_name == this.ClickElementAction
+          next_action_name == this.ClickElementAction
             ? "Clicking on"
             : "Typing on";
-        let action_description = "";
-        try {
-          action_description = action.next_action.action_description;
-        } catch (error) {
+        let action_description = next_action.action_description;
+        if (action_description == null)
           action_description = `${prefix} ${await element.innerText()}`;
-        }
-        await highlightElement(page, element, action_description);
 
-        console.log("action_description", action_description);
-        console.log("action", action);
-        console.log("action.next_action", action.next_action);
-        console.log("manual_mode", manual_mode);
-        console.log("shouldStop", this.shouldStop);
-        console.log("--------------------------------");
+        await highlightElement(page, element, action_description);
 
         if (!manual_mode && !this.shouldStop) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
           await removeHighlight(page);
-          switch (action.next_action_name) {
+          switch (next_action_name) {
             case this.ClickElementAction:
-              if (action.next_action.double_click) {
+              if ((next_action as ClickElementAction).double_click) {
                 await element.dblclick();
               } else {
                 await element.click();
               }
               break;
             case this.InputTextAction:
-              await element.fill(action.next_action.text);
+              await element.fill((next_action as InputTextAction).text);
               break;
           }
         }

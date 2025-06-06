@@ -51,7 +51,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
       if (currentAgent) {
         const success = await currentAgent.takeAction(
-          message.next_action,
+          message.next_step_response,
           message.manual_mode
         );
         sendResponse(success);
