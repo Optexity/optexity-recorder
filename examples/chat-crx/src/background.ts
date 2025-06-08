@@ -1,4 +1,4 @@
-import { Agent } from "./agent";
+import { Agent } from "./agent/agent";
 
 let currentAgent: Agent | null = null;
 chrome.action.onClicked.addListener(async ({ id: tabId }) => {

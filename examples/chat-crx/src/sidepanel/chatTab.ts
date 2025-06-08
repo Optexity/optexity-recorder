@@ -5,7 +5,7 @@ import {
   processingTemplate,
 } from "../templates/chatMessage";
 import { createControlButtons } from "../templates/controlButtons";
-
+import { compressToEncodedURIComponent } from "lz-string";
 interface StoppedState {
   demoId: string | null;
   goal: string | null;
@@ -98,7 +98,7 @@ export class ChatApp {
     }
   }
 
-  private async getEvalPage(): Promise<any> {
+  private async getEvalPage(): Promise<Record<string, any> | null> {
     const response = await chrome.runtime.sendMessage({
       type: "GET_EVAL_PAGE",
     });
@@ -112,14 +112,20 @@ export class ChatApp {
   private async getNextStepResponse(
     goal: string,
     step_number: number,
+    eval_page: Record<string, any> | null,
     demoId: string | null
   ): Promise<NextStepResponse> {
     const params: Record<string, string> = {
       goal,
       step_number: step_number.toString(),
     };
-    if (demoId) {
+    if (demoId !== null) {
       params.demonstration_id = demoId;
+    }
+    if (eval_page !== null) {
+      params.eval_page = compressToEncodedURIComponent(
+        JSON.stringify(eval_page)
+      );
     }
 
     const query = new URLSearchParams(params).toString();
@@ -136,6 +142,7 @@ export class ChatApp {
     const next_step_response = await this.getNextStepResponse(
       goal,
       this.step_number,
+      eval_page,
       demoId
     );
     const response = await chrome.runtime.sendMessage({

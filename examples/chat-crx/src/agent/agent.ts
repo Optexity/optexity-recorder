@@ -1,13 +1,17 @@
 import { crx, CrxApplication, Locator, Page } from "playwright-crx";
 import assert from "assert";
-import { highlightDone, highlightElement, removeHighlight } from "./highlight";
+import { highlightDone, highlightElement, removeHighlight } from "../highlight";
 // @ts-ignore
-import { buildDomTree } from "./buildDomTree";
+import { buildDomTree } from "../buildDomTree";
+import { BuildDomTreeResult } from "./dom/raw_types";
 import {
   ClickElementAction,
   InputTextAction,
   NextStepResponse,
-} from "./schemas/demonstration";
+} from "../schemas/demonstration";
+import { _constructDomTree } from "./dom/service";
+import { DOMState } from "./dom/views";
+import { clickElement } from "./actions/action";
 
 type BuildDomTreeArgs = {
   doHighlightElements: boolean;
@@ -24,9 +28,11 @@ export class Agent {
   private InputTextAction = "InputTextAction";
   private DoneAction = "DoneAction";
   private shouldStop = false;
+  private eval_page: BuildDomTreeResult | null = null;
+  private dom_state: DOMState | null = null;
 
   private args = {
-    doHighlightElements: false,
+    doHighlightElements: true,
     focusHighlightIndex: -1,
     viewportExpansion: -1,
     debugMode: false,
@@ -100,6 +106,16 @@ export class Agent {
     return { element: element as Locator, is_locator_fixed };
   }
 
+  async takeActionIndex(page: Page, next_step_response: NextStepResponse) {
+    if (this.dom_state == null) return;
+    const next_action_name = next_step_response.next_action_name;
+    if (next_action_name == this.ClickElementAction) {
+      const next_action = next_step_response.next_action as ClickElementAction;
+
+      await clickElement(page, this.dom_state, next_action);
+    }
+  }
+
   async takeAction(next_step_response: NextStepResponse, manual_mode: boolean) {
     this.shouldStop = false;
     try {
@@ -116,6 +132,11 @@ export class Agent {
       let next_action = next_step_response.next_action as
         | ClickElementAction
         | InputTextAction;
+
+      if (next_action.index != null) {
+        await this.takeActionIndex(page, next_step_response);
+        return { success: true, done: false, ask_user_to_take_action: false };
+      }
 
       if (next_action.locators == null || next_action.locators.length == 0)
         return { success: false, done: false, ask_user_to_take_action: false };
@@ -174,10 +195,32 @@ export class Agent {
     }
   }
 
+  async removeHighlights(page: Page) {
+    try {
+      await page.evaluate(() => {
+        // Remove the highlight container
+        const container = document.getElementById(
+          "playwright-highlight-container"
+        );
+        if (container) container.remove();
+
+        // Remove highlight attributes
+        const highlightedElements = document.querySelectorAll(
+          '[browser-user-highlight-id^="playwright-highlight-"]'
+        );
+        for (const el of highlightedElements) {
+          el.removeAttribute("browser-user-highlight-id");
+        }
+      });
+    } catch (error) {
+      console.error("Error removing highlights:", error);
+    }
+  }
   async getEvalPage() {
     try {
       const page = await this.currentCrxApp.attach(this.currentTabId);
-      const eval_page = await page.evaluate(
+      await this.removeHighlights(page);
+      this.eval_page = await page.evaluate(
         ({ args, fn }: { args: BuildDomTreeArgs; fn: string }) => {
           const func = eval(`(${fn})`);
           return func(args);
@@ -187,7 +230,15 @@ export class Agent {
           fn: buildDomTree.toString(),
         }
       );
-      return eval_page;
+      if (this.eval_page == null) {
+        throw new Error("Failed to evaluate page");
+      }
+      const [elementTree, selectorMap] = _constructDomTree(this.eval_page);
+      this.dom_state = {
+        elementTree: elementTree,
+        selectorMap: selectorMap,
+      };
+      return this.eval_page;
     } catch (error) {
       console.error("Error evaluating page:", error);
       return null;
