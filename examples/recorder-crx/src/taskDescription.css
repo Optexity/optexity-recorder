@@ -1,3 +1,11 @@
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
 .task-description-container {
   display: flex;
   justify-content: center;
@@ -58,4 +66,79 @@
 .start-capturing-button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
+}
+
+.landing-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-width: 100vw;
+  width: 100vw;
+  height: 100vh;
+  background: #fff;
+}
+
+.logo {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.greeting {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #23272f;
+  margin-bottom: 40px;
+  margin-top: 0;
+  text-align: center;
+}
+
+.start-capturing-button-landing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(90deg, #5b6dfa 0%, #4f5bd5 100%);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(91, 109, 250, 0.10);
+  transition: background 0.2s, box-shadow 0.2s;
+  margin-top: 0;
+}
+
+.start-capturing-button-landing:hover {
+  background: linear-gradient(90deg, #4f5bd5 0%, #5b6dfa 100%);
+  box-shadow: 0 4px 16px rgba(91, 109, 250, 0.15);
+}
+
+.capture-icon {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  margin-right: 12px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-sizing: border-box;
+  background: rgba(255,255,255,0.12);
+  position: relative;
+}
+
+.capture-icon:after {
+  content: '';
+  display: block;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 } 

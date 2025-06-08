@@ -22,32 +22,19 @@ interface TaskDescriptionProps {
 }
 
 export const TaskDescription: React.FC<TaskDescriptionProps> = ({ onStartCapturing }) => {
-  const [taskDescription, setTaskDescription] = React.useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (taskDescription.trim())
-      onStartCapturing(taskDescription);
-  };
-
   return (
-    <div className='task-description-container'>
-      <form onSubmit={handleSubmit} className='task-description-form'>
-        <h2>What would you like to automate?</h2>
-        <textarea
-          placeholder='Describe your task...'
-          value={taskDescription}
-          onChange={e => setTaskDescription(e.target.value)}
-          className='task-description-input'
-        />
-        <button
-          type='submit'
-          className='start-capturing-button'
-          disabled={!taskDescription.trim()}
-        >
-          Start Capturing
-        </button>
-      </form>
+    <div className='landing-container'>
+      <div className='logo'>
+        <img src='Optexity_logo_small_black.svg' alt='Optexity Logo' width='64' height='64' />
+      </div>
+      <h3 className='greeting'>Hello, Shivam!</h3>
+      <button
+        className='start-capturing-button-landing'
+        onClick={() => onStartCapturing('')}
+      >
+        <span className='capture-icon' />
+        Start Capture
+      </button>
     </div>
   );
 };

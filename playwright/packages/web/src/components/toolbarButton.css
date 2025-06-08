@@ -18,7 +18,7 @@
   flex: none;
   border: none;
   outline: none;
-  color: var(--vscode-sideBarTitle-foreground);
+  color: var(--vscode-sideBarTitle-foreground, #23272f);
   background: transparent;
   padding: 4px;
   cursor: pointer;
@@ -50,4 +50,27 @@
   padding: 0;
   margin: 5px 4px;
   height: 16px;
+}
+
+.toolbar-button.main-button {
+  background: #eef0ff;
+  color: #5b6dfa;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 15px;
+  min-width: 36px;
+  min-height: 36px;
+  border: none;
+  box-shadow: none;
+}
+
+.toolbar-button.main-button:active,
+.toolbar-button.main-button:focus {
+  background: #dbe3ff;
+  color: #3a4bb7;
+}
+
+.toolbar-button.main-button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
