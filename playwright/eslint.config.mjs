@@ -309,7 +309,7 @@ function reactPackageSection(packageName) {
     },
     rules: {
       ...baseRules,
-      "no-console": 2,
+      "no-console": "off",
     },
   };
 }
@@ -331,7 +331,7 @@ export default [
     files: ["packages/**/*.ts"],
     languageOptions: languageOptionsWithTsConfig,
     rules: {
-      "no-console": 2,
+      "no-console": "off",
       "no-restricted-properties": [
         2,
         {

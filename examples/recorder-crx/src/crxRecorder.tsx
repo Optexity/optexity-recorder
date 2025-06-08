@@ -1,32 +1,28 @@
 /**
  * Copyright (c) Rui Figueira.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the 'License');
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an 'AS IS' BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
 
 import * as React from 'react';
-import { Toolbar } from '@web/components/toolbar';
-import { ToolbarButton, ToolbarSeparator } from '@web/components/toolbarButton';
-import { Dialog } from './dialog';
-import { PreferencesForm } from './preferencesForm';
 import type { CallLog, ElementInfo, Mode, Source } from '@recorder/recorderTypes';
 import { Recorder } from '@recorder/recorder';
 import type { CrxSettings } from './settings';
 import { addSettingsChangedListener, defaultSettings, loadSettings, removeSettingsChangedListener } from './settings';
-import ModalContainer, { create as createModal } from 'react-modal-promise';
-import { SaveCodeForm } from './saveCodeForm';
+import ModalContainer from 'react-modal-promise';
 import './crxRecorder.css';
 import './form.css';
+import { TaskDescription } from './taskDescription';
 
 function setElementPicked(elementInfo: ElementInfo, userGesture?: boolean) {
   window.playwrightElementPicked(elementInfo, userGesture);
@@ -47,13 +43,6 @@ function download(filename: string, text: string) {
   } finally {
     URL.revokeObjectURL(url);
   }
-}
-
-function generateDatetimeSuffix() {
-  return new Date().toISOString()
-      .replace(/[-:]/g, '')
-      .replace(/\..+/, '')
-      .replace('T', '-');
 }
 
 const codegenFilenames: Record<string, string> = {
@@ -77,6 +66,9 @@ export const CrxRecorder: React.FC = ({
   const [log, setLog] = React.useState(new Map<string, CallLog>());
   const [mode, setMode] = React.useState<Mode>('none');
   const [selectedFileId, setSelectedFileId] = React.useState<string>(defaultSettings.targetLanguage);
+  const [showRecorder, setShowRecorder] = React.useState(false);
+  const [showSavedOverlay, setShowSavedOverlay] = React.useState(false);
+  const [recorderKey, setRecorderKey] = React.useState(0);
 
   React.useEffect(() => {
     const port = chrome.runtime.connect({ name: 'recorder' });
@@ -123,43 +115,59 @@ export const CrxRecorder: React.FC = ({
 
   const source = React.useMemo(() => sources.find(s => s.id === selectedFileId), [sources, selectedFileId]);
 
-  const requestStorageState = React.useCallback(() => {
-    if (!settings.experimental)
-      return;
+  // const requestStorageState = React.useCallback(() => {
+  //   if (!settings.experimental)
+  //     return;
 
-    chrome.runtime.sendMessage({ event: 'storageStateRequested' }).then(storageState => {
-      const fileSuffix = generateDatetimeSuffix();
-      download(`storageState-${fileSuffix}.json`, JSON.stringify(storageState, null, 2));
-    });
-  }, [settings]);
+  //   chrome.runtime.sendMessage({ event: 'storageStateRequested' }).then(storageState => {
+  //     const fileSuffix = generateDatetimeSuffix();
+  //     download(`storageState-${fileSuffix}.json`, JSON.stringify(storageState, null, 2));
+  //   });
+  // }, [settings]);
 
-  const showPreferences = React.useCallback(() => {
-    const modal = createModal(({ isOpen, onResolve }) =>
-      <Dialog title='Preferences' isOpen={isOpen} onClose={onResolve}>
-        <PreferencesForm />
-      </Dialog>
-    );
-    modal().catch(() => {});
-  }, []);
+  // const showPreferences = React.useCallback(() => {
+  //   const modal = createModal(({ isOpen, onResolve }) =>
+  //     <Dialog title='Preferences' isOpen={isOpen} onClose={onResolve}>
+  //       <PreferencesForm />
+  //     </Dialog>
+  //   );
+  //   modal().catch(() => {});
+  // }, []);
 
   const saveCode = React.useCallback(() => {
     if (!settings.experimental)
       return;
+    const code = source?.text;
+    if (!code)
+      return;
 
-    const modal = createModal(({ isOpen, onResolve, onReject }) => {
-      return <Dialog title='Save code' isOpen={isOpen} onClose={onReject}>
-        <SaveCodeForm onSubmit={onResolve} suggestedFilename={codegenFilenames[selectedFileId]} />
-      </Dialog>;
-    });
-    modal()
-        .then(({ filename }) => {
-          const code = source?.text;
-          if (!code)
-            return;
+    const url = code?.match(/await page\.goto\('([^']+)'\)/)?.[1] || '';
+    const FileContent = code;
+    const FileName = 'generated_code.js';
 
-          download(filename, code);
-        })
-        .catch(() => {});
+    const formData = new FormData();
+    formData.append('url', url);
+    formData.append('files', new File([FileContent], FileName, { type: 'text/plain' }));
+
+    (async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/v1/save_demo', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Authorization': 'Bearer test',
+          },
+        });
+        const data = await response.json();
+        console.log('Fetched:', data);
+      } catch (error) {
+        console.error('Fetch error:', error);
+      }
+    })();
+
+    const filename = codegenFilenames[selectedFileId];
+    download(filename, code);
+    setShowSavedOverlay(true);
   }, [settings, source, selectedFileId]);
 
   React.useEffect(() => {
@@ -187,11 +195,19 @@ export const CrxRecorder: React.FC = ({
     window.dispatch({ event: 'cursorActivity', params: { position } });
   }, []);
 
+  const handleStartCapturing = (description: string) => {
+    setShowRecorder(true);
+    setRecorderKey(prev => prev + 1);
+  };
+
+  if (!showRecorder)
+    return <TaskDescription onStartCapturing={handleStartCapturing} />;
+
   return <>
     <ModalContainer />
 
-    <div className='recorder'>
-      {settings.experimental && <>
+    <div className='recorder' style={{ position: 'relative' }}>
+      {/* {settings.experimental && <>
         <Toolbar>
           <ToolbarButton icon='save' title='Save' disabled={false} onClick={saveCode}>Save</ToolbarButton>
           <div style={{ flex: 'auto' }}></div>
@@ -204,8 +220,69 @@ export const CrxRecorder: React.FC = ({
           <ToolbarSeparator />
           <ToolbarButton icon='settings-gear' title='Preferences' onClick={showPreferences}></ToolbarButton>
         </Toolbar>
-      </>}
-      <Recorder sources={sources} paused={paused} log={log} mode={mode} onEditedCode={dispatchEditedCode} onCursorActivity={dispatchCursorActivity} />
+      </>} */}
+      <Recorder
+        key={recorderKey}
+        sources={sources}
+        paused={paused}
+        log={log}
+        mode={mode}
+        onEditedCode={dispatchEditedCode}
+        onCursorActivity={dispatchCursorActivity}
+        onSaveCode={saveCode}
+      />
+      {showSavedOverlay && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 12,
+            padding: '40px 32px',
+            boxShadow: '0 2px 16px rgba(0,0,0,0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            minWidth: 320,
+          }}>
+            <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 16, color: '#23272f' }}>Code has been successfully saved</div>
+            <button
+              style={{
+                marginTop: 16,
+                padding: '10px 24px',
+                fontSize: 16,
+                borderRadius: 8,
+                border: 'none',
+                background: '#5b6dfa',
+                color: '#fff',
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+              onClick={() => {
+                setShowSavedOverlay(false);
+                setShowRecorder(false);
+                setSources([]);
+                setPaused(false);
+                setLog(new Map<string, CallLog>());
+                setMode('none');
+                setSelectedFileId(defaultSettings.targetLanguage);
+                setRecorderKey(prev => prev + 1);
+              }}
+            >
+              Record another workflow
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   </>;
 };

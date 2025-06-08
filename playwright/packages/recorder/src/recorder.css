@@ -57,3 +57,68 @@ body.dark-mode .recorder .toolbar-button.toggled.circle-large-filled {
 .recorder .selector-input {
   flex: auto;
 }
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  min-width: 200px;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-panel-border);
+  padding: 4px 0;
+  background: var(--vscode-dropdown-background);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  margin-top: 4px;
+}
+
+.dropdown-content .toolbar-button {
+  width: 100%;
+  padding: 8px 16px;
+  justify-content: flex-start;
+  opacity: 0.8;
+}
+
+.dropdown-content .toolbar-button:hover {
+  background: var(--vscode-list-hoverBackground);
+  opacity: 1;
+}
+
+.dropdown-content.show {
+  display: block;
+}
+
+.dropdown .toolbar-button.active {
+  background-color: var(--vscode-toolbar-hoverBackground);
+  opacity: 1;
+}
+
+.main-button {
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  border: 1px solid var(--vscode-button-border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.main-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.main-button .codicon {
+  font-size: 16px;
+}
