@@ -1,13 +1,25 @@
 {
-  "name": "Optexity",
+  "name": "Optexity Agent",
   "version": "0.14.0",
   "manifest_version": 3,
+  "icons": {
+    "16": "Optexity_logo_small_black.png",
+    "32": "Optexity_logo_small_black.png",
+    "48": "Optexity_logo_small_black.png",
+    "128": "Optexity_logo_small_black.png"
+  },
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
   "action": {
-    "default_title": "Optexity"
+    "default_title": "Optexity Agent",
+    "default_icon": {
+      "16": "Optexity_logo_small_black.png",
+      "32": "Optexity_logo_small_black.png",
+      "48": "Optexity_logo_small_black.png",
+      "128": "Optexity_logo_small_black.png"
+    }
   },
   "side_panel": {
     "default_path": "sidepanel.html"
