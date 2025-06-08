@@ -30,6 +30,7 @@ import { toggleTheme } from '@web/theme';
 import { copy, useSetting } from '@web/uiUtils';
 import yaml from 'yaml';
 import { parseAriaSnapshot } from '@isomorphic/ariaSnapshot';
+import { useRef, useEffect } from 'react';
 
 export interface RecorderProps {
   sources: Source[],
@@ -49,9 +50,7 @@ const ActionCard: React.FC<{ index: number, message: string }> = ({ index, messa
     borderRadius: 12,
     boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
     padding: '10px 16px',
-    margin: '8px',
-    minWidth: 180,
-    maxWidth: 220,
+    margin: '8px 0',
     width: '100%',
     boxSizing: 'border-box',
   }}>
@@ -138,10 +137,10 @@ export const Recorder: React.FC<RecorderProps> = ({
   }, [source.text]);
 
   React.useLayoutEffect(() => {
-    if (messagesEndRef.current && containerRef.current) {
+    if (containerRef.current) {
       containerRef.current.scrollTo({
-        top: messagesEndRef.current.offsetTop - containerRef.current.offsetHeight + messagesEndRef.current.offsetHeight,
-        behavior: 'smooth'
+        top: containerRef.current.scrollHeight,
+        behavior: 'smooth',
       });
     }
   }, [actionCards]);
@@ -211,158 +210,201 @@ export const Recorder: React.FC<RecorderProps> = ({
       window.dispatch({ event: 'highlightRequested', params: { ariaTemplate: fragment } });
   }, [mode]);
 
-  return <div className='recorder' style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-    <div style={{ justifyContent: 'space-between', padding: '0 16px' }}>
-      <Toolbar>
-        <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
-          <ToolbarButton
-            icon={paused ? 'play' : 'debug-pause'}
-            title={paused ? 'Resume' : 'Pause'}
-            toggled={mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'}
-            onClick={() => {
-              window.dispatch({ event: 'setMode', params: { mode: mode === 'none' || mode === 'standby' || mode === 'inspecting' ? 'recording' : 'standby' } });
-            }}
-            className="main-button"
-            style={{
-              background: mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'
-                ? 'var(--vscode-button-background)'
-                : 'var(--vscode-button-secondaryBackground)',
-              color: mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'
-                ? 'var(--vscode-button-foreground)'
-                : 'var(--vscode-button-secondaryForeground)',
-            }}
-          >
-            {paused ? 'Resume' : 'Pause'}
-          </ToolbarButton>
-          <ToolbarButton
-            icon="check"
-            title="Complete recording"
-            onClick={onSaveCode}
-            className="main-button"
-            style={{
-              background: 'var(--vscode-button-secondaryBackground)',
-              color: 'var(--vscode-button-secondaryForeground)',
-            }}
-          >
-            Complete
-          </ToolbarButton>
-          <div className="dropdown">
-            <ToolbarButton
-              icon="more"
-              title="More options"
-              style={{
-                padding: '4px 8px',
-                opacity: 0.8,
-                fontSize: '16px'
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                const dropdownContent = e.currentTarget.nextElementSibling;
-                const isActive = e.currentTarget.classList.contains('active');
-                // Close all other dropdowns
-                document.querySelectorAll('.dropdown-content.show').forEach(el => {
-                  if (el !== dropdownContent) el.classList.remove('show');
-                });
-                document.querySelectorAll('.toolbar-button.active').forEach(el => {
-                  if (el !== e.currentTarget) el.classList.remove('active');
-                });
-                // Toggle current dropdown
-                if (dropdownContent) {
-                  dropdownContent.classList.toggle('show');
-                  e.currentTarget.classList.toggle('active');
-                }
-              }}
-            />
-            <div className="dropdown-content">
-              <ToolbarButton
-                icon='inspect'
-                title='Pick locator'
-                toggled={mode === 'inspecting' || mode === 'recording-inspecting'}
-                onClick={() => {
-                  const newMode = {
-                    'inspecting': 'standby',
-                    'none': 'inspecting',
-                    'standby': 'inspecting',
-                    'recording': 'recording-inspecting',
-                    'recording-inspecting': 'recording',
-                    'assertingText': 'recording-inspecting',
-                    'assertingVisibility': 'recording-inspecting',
-                    'assertingValue': 'recording-inspecting',
-                    'assertingSnapshot': 'recording-inspecting',
-                  }[mode];
-                  window.dispatch({ event: 'setMode', params: { mode: newMode } }).catch(() => { });
-                }}
-              >
-                Pick locator
-              </ToolbarButton>
-              <ToolbarButton
-                icon='eye'
-                title='Assert visibility'
-                toggled={mode === 'assertingVisibility'}
-                disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
-                onClick={() => {
-                  window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingVisibility' ? 'recording' : 'assertingVisibility' } });
-                }}
-              >
-                Assert visibility
-              </ToolbarButton>
-              <ToolbarButton
-                icon='whole-word'
-                title='Assert text'
-                toggled={mode === 'assertingText'}
-                disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
-                onClick={() => {
-                  window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingText' ? 'recording' : 'assertingText' } });
-                }}
-              >
-                Assert text
-              </ToolbarButton>
-              <ToolbarButton
-                icon='symbol-constant'
-                title='Assert value'
-                toggled={mode === 'assertingValue'}
-                disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
-                onClick={() => {
-                  window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingValue' ? 'recording' : 'assertingValue' } });
-                }}
-              >
-                Assert value
-              </ToolbarButton>
-              <ToolbarButton
-                icon='gist'
-                title='Assert snapshot'
-                toggled={mode === 'assertingSnapshot'}
-                disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
-                onClick={() => {
-                  window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingSnapshot' ? 'recording' : 'assertingSnapshot' } });
-                }}
-              >
-                Assert snapshot
-              </ToolbarButton>
-            </div>
-          </div>
-        </div>
-      </Toolbar>
-    </div>
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dropdown = dropdownRef.current;
+    const btn = moreBtnRef.current;
+    if (dropdown && btn && dropdown.classList.contains('show')) {
+      // Get bounding rects
+      const btnRect = btn.getBoundingClientRect();
+      const dropdownRect = dropdown.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      // If dropdown would overflow right, align right
+      if (btnRect.left + dropdownRect.width > windowWidth - 12) {
+        dropdown.style.left = 'auto';
+        dropdown.style.right = '0px';
+        dropdown.style.transform = 'none';
+      } else {
+        dropdown.style.left = '50%';
+        dropdown.style.right = 'auto';
+        dropdown.style.transform = 'translateX(-50%)';
+      }
+    }
+  });
+
+  return <div className='recorder' style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 320, background: '#fafbfc', borderRadius: 12 }}>
     <div
       ref={containerRef}
       style={{
         flex: '1 1 auto',
         minHeight: 0,
-        padding: '0 16px',
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignContent: 'flex-start',
-        gap: '0',
+        padding: '0 16px 160px 16px',
         overflowY: 'auto',
-        width: '100vw',
+        width: '100%',
         boxSizing: 'border-box',
+        background: '#fafbfc',
+        height: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column-reverse',
+        justifyContent: 'flex-start',
       }}
     >
-      {actionCards.map(card => (
+      <div ref={messagesEndRef} />
+      {actionCards.reverse().map(card => (
         <ActionCard key={card.index} index={card.index} message={card.message} />
       ))}
-      <div ref={messagesEndRef} />
+    </div>
+    <div style={{
+      width: '100%',
+      padding: '20px 0 16px 0',
+      boxSizing: 'border-box',
+      background: '#fff',
+      borderTop: '1px solid #eee',
+      zIndex: 100,
+      position: 'fixed',
+      left: 0,
+      bottom: 0,
+      borderBottomLeftRadius: 12,
+      borderBottomRightRadius: 12,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 18,
+      maxWidth: '100vw',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, maxWidth: 480, width: '100%', margin: '0 auto' }}>
+        <ToolbarButton
+          icon={paused ? 'play' : 'debug-pause'}
+          title={paused ? 'Resume' : 'Pause'}
+          toggled={mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'}
+          onClick={() => {
+            window.dispatch({ event: 'setMode', params: { mode: mode === 'none' || mode === 'standby' || mode === 'inspecting' ? 'recording' : 'standby' } });
+          }}
+          className="outline-button"
+          style={{ width: 140, minWidth: 0, minHeight: 48, fontWeight: 700, fontSize: 18, border: '1.5px solid #d1d5db', color: '#23272f', background: '#fff', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          {paused ? 'Resume' : 'Pause'}
+        </ToolbarButton>
+        <ToolbarButton
+          icon="trash"
+          title="Delete"
+          className="outline-button"
+          style={{ width: 140, minWidth: 0, minHeight: 48, fontWeight: 700, fontSize: 18, border: '1.5px solid #d1d5db', color: '#23272f', background: '#fff', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          Delete
+        </ToolbarButton>
+        {/* TODO: Add options functionality, DO NOT REMOVE */}
+        {/* <div className="dropdown" style={{ position: 'relative' }}>
+          <ToolbarButton
+            ref={moreBtnRef}
+            icon="more"
+            title="More options"
+            style={{ width: 60, minWidth: 0, minHeight: 48, fontSize: '22px', color: '#5b6dfa', background: '#fff', border: '1.5px solid #d1d5db', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const dropdownContent = e.currentTarget.nextElementSibling;
+              const isActive = e.currentTarget.classList.contains('active');
+              // Close all other dropdowns
+              document.querySelectorAll('.dropdown-content.show').forEach(el => {
+                if (el !== dropdownContent) el.classList.remove('show');
+              });
+              document.querySelectorAll('.toolbar-button.active').forEach(el => {
+                if (el !== e.currentTarget) el.classList.remove('active');
+              });
+              // Toggle current dropdown
+              if (dropdownContent) {
+                dropdownContent.classList.toggle('show');
+                e.currentTarget.classList.toggle('active');
+                // Position above the button
+                if (dropdownContent.classList.contains('show')) {
+                  const buttonRect = e.currentTarget.getBoundingClientRect();
+                  (dropdownContent as HTMLElement).style.bottom = `${buttonRect.height + 8}px`;
+                  (dropdownContent as HTMLElement).style.top = 'auto';
+                }
+              }
+            }}
+          />
+          <div ref={dropdownRef} className="dropdown-content" style={{ bottom: '52px', top: 'auto' }}>
+            <ToolbarButton
+              icon='inspect'
+              title='Pick locator'
+              toggled={mode === 'inspecting' || mode === 'recording-inspecting'}
+              onClick={() => {
+                const newMode = {
+                  'inspecting': 'standby',
+                  'none': 'inspecting',
+                  'standby': 'inspecting',
+                  'recording': 'recording-inspecting',
+                  'recording-inspecting': 'recording',
+                  'assertingText': 'recording-inspecting',
+                  'assertingVisibility': 'recording-inspecting',
+                  'assertingValue': 'recording-inspecting',
+                  'assertingSnapshot': 'recording-inspecting',
+                }[mode];
+                window.dispatch({ event: 'setMode', params: { mode: newMode } }).catch(() => { });
+              }}
+            >
+              Pick locator
+            </ToolbarButton>
+            <ToolbarButton
+              icon='eye'
+              title='Assert visibility'
+              toggled={mode === 'assertingVisibility'}
+              disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+              onClick={() => {
+                window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingVisibility' ? 'recording' : 'assertingVisibility' } });
+              }}
+            >
+              Assert visibility
+            </ToolbarButton>
+            <ToolbarButton
+              icon='whole-word'
+              title='Assert text'
+              toggled={mode === 'assertingText'}
+              disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+              onClick={() => {
+                window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingText' ? 'recording' : 'assertingText' } });
+              }}
+            >
+              Assert text
+            </ToolbarButton>
+            <ToolbarButton
+              icon='symbol-constant'
+              title='Assert value'
+              toggled={mode === 'assertingValue'}
+              disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+              onClick={() => {
+                window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingValue' ? 'recording' : 'assertingValue' } });
+              }}
+            >
+              Assert value
+            </ToolbarButton>
+            <ToolbarButton
+              icon='gist'
+              title='Assert snapshot'
+              toggled={mode === 'assertingSnapshot'}
+              disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+              onClick={() => {
+                window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingSnapshot' ? 'recording' : 'assertingSnapshot' } });
+              }}
+            >
+              Assert snapshot
+            </ToolbarButton>
+          </div>
+        </div> */}
+      </div>
+      <ToolbarButton
+        icon="check"
+        title="Complete recording"
+        onClick={onSaveCode}
+        className="large-filled-button"
+        style={{ width: '92%', minWidth: 0, minHeight: 56, fontSize: 22, fontWeight: 800, borderRadius: 18, margin: '0 auto' }}
+      >
+        Complete Capture
+      </ToolbarButton>
     </div>
   </div>;
 };

@@ -1,12 +1,12 @@
 {
-  "name": "Playwright CRX",
+  "name": "Optexity Recorder",
   "version": "0.14.0",
   "manifest_version": 3,
   "icons": {
-    "16": "icon-16x16.png",
-    "32": "icon-32x32.png",
-    "48": "icon-48x48.png",
-    "128": "icon-192x192.png"
+    "16": "Optexity_logo_small.svg",
+    "32": "Optexity_logo_small.svg",
+    "48": "Optexity_logo_small.svg",
+    "128": "Optexity_logo_small.svg"
   },
   "background": {
     "service_worker": "background.js",
@@ -14,8 +14,8 @@
   },
   "action": {
     "default_icon": {
-      "16": "icon-16x16.png",
-      "32": "icon-32x32.png"
+      "16": "Optexity_logo_small.svg",
+      "32": "Optexity_logo_small.svg"
     },
     "default_title": "Record"
   },
