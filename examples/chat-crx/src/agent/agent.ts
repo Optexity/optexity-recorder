@@ -11,7 +11,7 @@ import {
 } from "../schemas/demonstration";
 import { _constructDomTree } from "./dom/service";
 import { DOMState } from "./dom/views";
-import { clickElement } from "./actions/action";
+import { clickElement, inputElement } from "./actions/action";
 
 type BuildDomTreeArgs = {
   doHighlightElements: boolean;
@@ -113,6 +113,11 @@ export class Agent {
       const next_action = next_step_response.next_action as ClickElementAction;
 
       await clickElement(page, this.dom_state, next_action);
+    } else if (next_action_name == this.InputTextAction) {
+      const next_action = next_step_response.next_action as InputTextAction;
+      await inputElement(page, this.dom_state, next_action);
+    } else {
+      throw new Error(`Unknown action name: ${next_action_name}`);
     }
   }
 
