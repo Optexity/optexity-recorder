@@ -122,7 +122,11 @@ export class Agent {
     }
   }
 
-  async takeAction(next_step_response: NextStepResponse, manual_mode: boolean) {
+  async takeAction(
+    next_step_response: NextStepResponse,
+    manual_mode: boolean,
+    is_replay: boolean
+  ) {
     this.shouldStop = false;
     try {
       const page = await this.currentCrxApp.attach(this.currentTabId);
@@ -153,7 +157,7 @@ export class Agent {
 
       let autonomous_mode_ask_user_to_fill = false;
 
-      if (is_locator_fixed) {
+      if (is_locator_fixed || is_replay) {
         const prefix =
           next_action_name == this.ClickElementAction
             ? "Clicking on"
@@ -187,7 +191,8 @@ export class Agent {
         }
       }
 
-      const ask_user_to_take_action = manual_mode || !is_locator_fixed;
+      const ask_user_to_take_action =
+        manual_mode || !(is_locator_fixed || is_replay);
 
       return {
         success: true,

@@ -150,6 +150,7 @@ export class ChatApp {
       goal: goal,
       next_step_response: next_step_response,
       manual_mode: this.isManualMode,
+      is_replay: demoId !== null,
     });
     this.step_number++;
     return response;

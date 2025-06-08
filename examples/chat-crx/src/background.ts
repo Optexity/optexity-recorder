@@ -52,7 +52,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (currentAgent) {
         const success = await currentAgent.takeAction(
           message.next_step_response,
-          message.manual_mode
+          message.manual_mode,
+          message.is_replay
         );
         sendResponse(success);
       } else {
