@@ -32,7 +32,7 @@ export class Agent {
   private dom_state: DOMState | null = null;
 
   private args = {
-    doHighlightElements: true,
+    doHighlightElements: false,
     focusHighlightIndex: -1,
     viewportExpansion: -1,
     debugMode: false,
@@ -68,6 +68,7 @@ export class Agent {
   ) {
     let element: Locator | Page = page;
     let is_locator_fixed = true;
+    console.log("action ", action);
     for (const locator of action.locators) {
       is_locator_fixed = is_locator_fixed && locator.fixed;
       switch (locator.locator_type) {
@@ -138,7 +139,7 @@ export class Agent {
         | ClickElementAction
         | InputTextAction;
 
-      if (next_action.index != null) {
+      if (next_action.index != null && next_action.index >= 0) {
         await this.takeActionIndex(page, next_step_response);
         return { success: true, done: false, ask_user_to_take_action: false };
       }
@@ -225,6 +226,7 @@ export class Agent {
     try {
       const page = await this.currentCrxApp.attach(this.currentTabId);
       await this.removeHighlights(page);
+      await page.waitForLoadState("domcontentloaded", { timeout: 10000 });
       this.eval_page = await page.evaluate(
         ({ args, fn }: { args: BuildDomTreeArgs; fn: string }) => {
           const func = eval(`(${fn})`);
