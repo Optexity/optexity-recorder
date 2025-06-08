@@ -113,7 +113,7 @@ dialog .body {
 * {
   box-sizing: border-box;
   min-width: 0;
-  min-height: 0;
+  /* min-height: 0; */
 }
 
 *[hidden],
