@@ -1,14 +1,14 @@
 /**
  * Copyright (c) Rui Figueira.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the 'License');
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License is distributed on an 'AS IS' BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -140,6 +140,31 @@ export const CrxRecorder: React.FC = ({
     const code = source?.text;
     if (!code)
       return;
+
+    const url = code?.match(/await page\.goto\('([^']+)'\)/)?.[1] || '';
+    const FileContent = code;
+    const FileName = 'generated_code.js';
+
+    const formData = new FormData();
+    formData.append('url', url);
+    formData.append('files', new File([FileContent], FileName, { type: 'text/plain' }));
+
+    (async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/v1/save_demo', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Authorization': 'Bearer test',
+          },
+        });
+        const data = await response.json();
+        console.log('Fetched:', data);
+      } catch (error) {
+        console.error('Fetch error:', error);
+      }
+    })();
+
     const filename = codegenFilenames[selectedFileId];
     download(filename, code);
     setShowSavedOverlay(true);
