@@ -122,14 +122,19 @@ export class ChatApp {
     if (demoId !== null) {
       params.demonstration_id = demoId;
     }
+    let body: Record<string, string> = {};
     if (eval_page !== null) {
-      params.eval_page = compressToEncodedURIComponent(
-        JSON.stringify(eval_page)
-      );
+      body.eval_page = compressToEncodedURIComponent(JSON.stringify(eval_page));
     }
 
     const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${this.api_url}/get_next_step?${query}`);
+    const response = await fetch(`${this.api_url}/get_next_step?${query}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
