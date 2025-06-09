@@ -1,4 +1,10 @@
-import { crx, CrxApplication, Locator, Page } from "playwright-crx";
+import {
+  crx,
+  CrxApplication,
+  Locator,
+  Page,
+  FrameLocator,
+} from "playwright-crx";
 import assert from "assert";
 import { highlightDone, highlightElement, removeHighlight } from "../highlight";
 // @ts-ignore
@@ -66,39 +72,67 @@ export class Agent {
     action: ClickElementAction | InputTextAction,
     page: Page
   ) {
-    let element: Locator | Page = page;
+    let element: Locator | Page | FrameLocator = page;
     let is_locator_fixed = true;
+
     console.log("action ", action);
     for (const locator of action.locators) {
       is_locator_fixed = is_locator_fixed && locator.fixed;
       switch (locator.locator_type) {
         case "getByText":
-          element = element.getByText(locator.first_arg, locator.options);
+          element = element.getByText(
+            locator.first_arg as string,
+            locator.options
+          );
           break;
         case "getByRole":
           // @ts-ignore
           element = element.getByRole(locator.first_arg, locator.options);
           break;
         case "getByLabel":
-          element = element.getByLabel(locator.first_arg, locator.options);
+          element = element.getByLabel(
+            locator.first_arg as string,
+            locator.options
+          );
           break;
         case "getByPlaceholder":
           element = element.getByPlaceholder(
-            locator.first_arg,
+            locator.first_arg as string,
             locator.options
           );
           break;
         case "getByAltText":
-          element = element.getByAltText(locator.first_arg, locator.options);
+          element = element.getByAltText(
+            locator.first_arg as string,
+            locator.options
+          );
           break;
         case "getByTitle":
-          element = element.getByTitle(locator.first_arg, locator.options);
+          element = element.getByTitle(
+            locator.first_arg as string,
+            locator.options
+          );
           break;
         case "getByTestId":
-          element = element.getByTestId(locator.first_arg);
+          element = element.getByTestId(locator.first_arg as string);
           break;
         case "locator":
-          element = element.locator(locator.first_arg, locator.options);
+          element = element.locator(
+            locator.first_arg as string,
+            locator.options
+          );
+          break;
+        case "contentFrame":
+          element = (element as Locator).contentFrame();
+          break;
+        case "first":
+          element = (element as Locator).first();
+          break;
+        case "last":
+          element = (element as Locator).last();
+          break;
+        case "nth":
+          element = (element as Locator).nth(locator.first_arg as number);
           break;
         default:
           throw new Error(`Unknown locator type: ${locator.locator_type}`);

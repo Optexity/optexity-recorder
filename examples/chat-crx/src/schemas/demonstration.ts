@@ -1,6 +1,6 @@
 export interface Locator {
   locator_type: string;
-  first_arg: string;
+  first_arg: string | number | null;
   options: Record<string, any>;
   fixed: boolean;
 }
