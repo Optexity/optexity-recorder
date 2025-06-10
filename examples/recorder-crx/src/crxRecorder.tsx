@@ -160,14 +160,37 @@ export const CrxRecorder: React.FC = ({
         });
         const data = await response.json();
         console.log('Fetched:', data);
+
+        // Clear state
+        setSources([]);
+        setPaused(false);
+        setLog(new Map<string, CallLog>());
+        setMode('none');
+        setSelectedFileId(defaultSettings.targetLanguage);
+        setRecorderKey(prev => prev + 1);
+
+        // Open optexity.com in new tab and close extension
+        window.open('https://optexity.com', '_blank');
+        window.close();
       } catch (error) {
         console.error('Fetch error:', error);
+
+        // Clear state
+        setSources([]);
+        setPaused(false);
+        setLog(new Map<string, CallLog>());
+        setMode('none');
+        setSelectedFileId(defaultSettings.targetLanguage);
+        setRecorderKey(prev => prev + 1);
+
+        // Open optexity.com in new tab and close extension
+        window.open('https://optexity.com', '_blank');
+        window.close();
       }
     })();
 
     const filename = codegenFilenames[selectedFileId];
     download(filename, code);
-    setShowSavedOverlay(true);
   }, [settings, source, selectedFileId]);
 
   React.useEffect(() => {
@@ -200,6 +223,19 @@ export const CrxRecorder: React.FC = ({
     setRecorderKey(prev => prev + 1);
   };
 
+  const handleDelete = React.useCallback(() => {
+    // Clear all state first
+    setSources([]);
+    setPaused(false);
+    setLog(new Map<string, CallLog>());
+    setMode('none');
+    setSelectedFileId(defaultSettings.targetLanguage);
+    setRecorderKey(prev => prev + 1);
+    
+    // Close the extension window
+    window.close();
+  }, []);
+
   if (!showRecorder)
     return <TaskDescription onStartCapturing={handleStartCapturing} />;
 
@@ -230,6 +266,7 @@ export const CrxRecorder: React.FC = ({
         onEditedCode={dispatchEditedCode}
         onCursorActivity={dispatchCursorActivity}
         onSaveCode={saveCode}
+        onDelete={handleDelete}
       />
       {showSavedOverlay && (
         <div style={{

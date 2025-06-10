@@ -40,6 +40,7 @@ export interface RecorderProps {
   onEditedCode?: (code: string) => any,
   onCursorActivity?: (position: { line: number }) => any,
   onSaveCode?: () => any,
+  onDelete?: () => any,
 }
 
 const ActionCard: React.FC<{ index: number, message: string }> = ({ index, message }) => (
@@ -79,6 +80,7 @@ export const Recorder: React.FC<RecorderProps> = ({
   onEditedCode,
   onCursorActivity,
   onSaveCode,
+  onDelete,
 }) => {
   const [selectedFileId, setSelectedFileId] = React.useState<string | undefined>();
   const [runningFileId, setRunningFileId] = React.useState<string | undefined>();
@@ -86,6 +88,7 @@ export const Recorder: React.FC<RecorderProps> = ({
   const [ariaSnapshot, setAriaSnapshot] = React.useState<string | undefined>();
   const [ariaSnapshotErrors, setAriaSnapshotErrors] = React.useState<SourceHighlight[]>();
   const [selectorFocusOnChange, setSelectorFocusOnChange] = React.useState<boolean | undefined>(true);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = React.useState(false);
 
   const fileId = selectedFileId || runningFileId || sources[0]?.id;
 
@@ -129,7 +132,7 @@ export const Recorder: React.FC<RecorderProps> = ({
     for (const line of lines) {
       if (line.includes('click')) {
         cards.push({ index: index++, message: 'Click this field.' });
-      } else if (line.includes('fill')) {
+      } else if (line.includes('fill') && !line.includes('"merge_with_previous": "true"')) {
         cards.push({ index: index++, message: 'type text' });
       }
     }
@@ -294,6 +297,7 @@ export const Recorder: React.FC<RecorderProps> = ({
           title="Delete"
           className="outline-button"
           style={{ width: 140, minWidth: 0, minHeight: 48, fontWeight: 700, fontSize: 18, border: '1.5px solid #d1d5db', color: '#23272f', background: '#fff', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          onClick={() => setShowDeleteConfirmation(true)}
         >
           Delete
         </ToolbarButton>
@@ -407,5 +411,68 @@ export const Recorder: React.FC<RecorderProps> = ({
         Complete Capture
       </ToolbarButton>
     </div>
+    {showDeleteConfirmation && (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 99999,
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: 12,
+          padding: '40px 32px',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          minWidth: 320,
+        }}>
+          <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 16, color: '#23272f' }}>Are you sure you want to delete?</div>
+          <div style={{ fontSize: 16, color: '#666', marginBottom: 24, textAlign: 'center' }}>This will close the extension and clear all captured data.</div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              style={{
+                padding: '10px 24px',
+                fontSize: 16,
+                borderRadius: 8,
+                border: '1.5px solid #d1d5db',
+                background: '#fff',
+                color: '#23272f',
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+              onClick={() => setShowDeleteConfirmation(false)}
+            >
+              Cancel
+            </button>
+            <button
+              style={{
+                padding: '10px 24px',
+                fontSize: 16,
+                borderRadius: 8,
+                border: 'none',
+                background: '#ef4444',
+                color: '#fff',
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+              onClick={() => {
+                setShowDeleteConfirmation(false);
+                onDelete?.();
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>;
 };
