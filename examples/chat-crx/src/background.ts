@@ -116,6 +116,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true; // ✅ Important to keep the message channel open for async response
   }
 
+  if (message.type === "TOGGLE_HIGHLIGHT") {
+    (async () => {
+      if (currentAgent) {
+        await currentAgent.toggleHighlight(message.is_highlight_enabled);
+        sendResponse({ success: true });
+      } else {
+        sendResponse({
+          error: "No active agent available",
+        });
+      }
+    })();
+
+    return true; // ✅ Important to keep the message channel open for async response
+  }
+
   return false;
 });
 

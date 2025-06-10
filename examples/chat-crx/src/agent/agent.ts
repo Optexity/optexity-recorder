@@ -60,6 +60,10 @@ export class Agent {
     this.currentTabId = tabId;
   }
 
+  toggleHighlight(is_highlight_enabled: boolean) {
+    this.args.doHighlightElements = is_highlight_enabled;
+  }
+
   async close() {
     await this.currentCrxApp.close();
   }

@@ -71,6 +71,15 @@ body {
     /* Makes attach button appear first */
 }
 
+#highlightButton {
+    order: 0;
+    /* Places highlight button after attach button */
+}
+
+#highlightButton.active {
+    background: rgba(255, 255, 255, 0.4);
+}
+
 .attach-button:hover {
     background: rgba(255, 255, 255, 0.3);
     transform: scale(1.05);

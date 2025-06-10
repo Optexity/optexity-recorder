@@ -18,6 +18,7 @@ export class ChatApp {
   private sendButton!: HTMLButtonElement;
   private modeToggle!: HTMLInputElement;
   private attachButton!: HTMLButtonElement;
+  private highlightButton!: HTMLButtonElement;
   private inputContainer!: HTMLElement;
 
   // State management
@@ -26,6 +27,7 @@ export class ChatApp {
   private isManualMode: boolean = false;
   private shouldStop: boolean = false;
   private isPaused: boolean = false;
+  private isHighlightEnabled: boolean = false;
   private originalInputContent: string = "";
   private stoppedState: StoppedState = {
     demoId: null,
@@ -54,6 +56,9 @@ export class ChatApp {
     this.attachButton = document.getElementById(
       "attachButton"
     ) as HTMLButtonElement;
+    this.highlightButton = document.getElementById(
+      "highlightButton"
+    ) as HTMLButtonElement;
     this.inputContainer = document.getElementById(
       "input-container"
     ) as HTMLElement;
@@ -76,6 +81,10 @@ export class ChatApp {
     });
 
     this.attachButton.addEventListener("click", () => this.attachCurrentTab());
+
+    this.highlightButton.addEventListener("click", () =>
+      this.toggleHighlight()
+    );
   }
 
   private async attachCurrentTab(): Promise<void> {
@@ -370,5 +379,17 @@ export class ChatApp {
 
   private scrollToBottom(): void {
     this.messages.scrollTop = this.messages.scrollHeight;
+  }
+
+  private toggleHighlight(): void {
+    this.isHighlightEnabled = !this.isHighlightEnabled;
+    this.highlightButton.classList.toggle("active");
+    this.highlightButton.textContent = this.isHighlightEnabled
+      ? "Hide Highlight"
+      : "Show Highlight";
+    chrome.runtime.sendMessage({
+      type: "TOGGLE_HIGHLIGHT",
+      is_highlight_enabled: this.isHighlightEnabled,
+    });
   }
 }
