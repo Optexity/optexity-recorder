@@ -265,6 +265,7 @@ export class Agent {
       console.error("Error removing highlights:", error);
     }
   }
+
   async getEvalPage() {
     try {
       const page = await this.currentCrxApp.attach(this.currentTabId);
@@ -291,6 +292,26 @@ export class Agent {
       return this.eval_page;
     } catch (error) {
       console.error("Error evaluating page:", error);
+      return null;
+    }
+  }
+
+  async getUrl() {
+    try {
+      const page = await this.currentCrxApp.attach(this.currentTabId);
+      return page.url();
+    } catch (error) {
+      console.error("Error getting url:", error);
+      return null;
+    }
+  }
+
+  async getPageTitle() {
+    try {
+      const page = await this.currentCrxApp.attach(this.currentTabId);
+      return page.title();
+    } catch (error) {
+      console.error("Error getting page title:", error);
       return null;
     }
   }

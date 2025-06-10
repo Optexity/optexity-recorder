@@ -107,21 +107,31 @@ export class ChatApp {
     }
   }
 
-  private async getEvalPage(): Promise<Record<string, any> | null> {
+  private async getEvalPage(): Promise<{
+    eval_page: Record<string, any> | null;
+    url: string | null;
+    page_title: string | null;
+  }> {
     const response = await chrome.runtime.sendMessage({
       type: "GET_EVAL_PAGE",
     });
     if (response?.eval_page) {
-      return response.eval_page;
+      return response;
     }
     console.error("Error getting eval page:", response.error);
-    return null;
+    return {
+      eval_page: null,
+      url: null,
+      page_title: null,
+    };
   }
 
   private async getNextStepResponse(
     goal: string,
     step_number: number,
     eval_page: Record<string, any> | null,
+    url: string | null,
+    page_title: string | null,
     demoId: string | null
   ): Promise<NextStepResponse> {
     const params: Record<string, string> = {
@@ -134,6 +144,8 @@ export class ChatApp {
     let body: Record<string, string> = {};
     if (eval_page !== null) {
       body.eval_page = compressToEncodedURIComponent(JSON.stringify(eval_page));
+      body.url = url || "";
+      body.page_title = page_title || "";
     }
 
     const query = new URLSearchParams(params).toString();
@@ -151,12 +163,16 @@ export class ChatApp {
   }
 
   private async takeAction(goal: string, demoId: string | null) {
-    const eval_page = await this.getEvalPage();
+    const { eval_page, url, page_title } = await this.getEvalPage();
     console.log("Eval page: ", eval_page);
+    console.log("URL: ", url);
+    console.log("Page title: ", page_title);
     const next_step_response = await this.getNextStepResponse(
       goal,
       this.step_number,
       eval_page,
+      url,
+      page_title,
       demoId
     );
     const response = await chrome.runtime.sendMessage({

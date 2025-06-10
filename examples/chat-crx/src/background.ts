@@ -90,7 +90,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
       if (currentAgent) {
         const eval_page = await currentAgent.getEvalPage();
-        sendResponse({ eval_page: eval_page });
+        const url = await currentAgent.getUrl();
+        const page_title = await currentAgent.getPageTitle();
+        sendResponse({
+          eval_page: eval_page,
+          url: url,
+          page_title: page_title,
+        });
       } else {
         sendResponse({
           error: "No active agent available",
