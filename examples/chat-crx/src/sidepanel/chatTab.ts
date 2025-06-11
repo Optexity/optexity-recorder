@@ -6,11 +6,6 @@ import {
 } from "../templates/chatMessage";
 import { createControlButtons } from "../templates/controlButtons";
 import { compressToEncodedURIComponent } from "lz-string";
-interface StoppedState {
-  demoId: string | null;
-  goal: string | null;
-  step_number: number | null;
-}
 
 export class ChatApp {
   private messages!: HTMLElement;
@@ -20,20 +15,15 @@ export class ChatApp {
   private attachButton!: HTMLButtonElement;
   private highlightButton!: HTMLButtonElement;
   private inputContainer!: HTMLElement;
+  private userGoal: string | null = null;
 
   // State management
-  private isProcessing: boolean = false;
   private step_number: number = 0;
   private isManualMode: boolean = false;
   private shouldStop: boolean = false;
   private isPaused: boolean = false;
   private isHighlightEnabled: boolean = false;
   private originalInputContent: string = "";
-  private stoppedState: StoppedState = {
-    demoId: null,
-    goal: null,
-    step_number: null,
-  };
 
   // Configuration
   private readonly api_url: string = "http://localhost:8000/api/v1";
@@ -62,6 +52,8 @@ export class ChatApp {
     this.inputContainer = document.getElementById(
       "input-container"
     ) as HTMLElement;
+
+    this.originalInputContent = this.inputContainer.innerHTML;
   }
 
   private attachEventListeners(): void {
@@ -85,26 +77,6 @@ export class ChatApp {
     this.highlightButton.addEventListener("click", () =>
       this.toggleHighlight()
     );
-  }
-
-  private async attachCurrentTab(): Promise<void> {
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: "ATTACH_TAB",
-      });
-      if (response?.success) {
-        this.addBotMessage("Successfully attached to the current tab!");
-      } else {
-        this.addBotMessage(
-          "Failed to attach to the current tab: " + response.error
-        );
-      }
-    } catch (error) {
-      console.error("Error attaching to tab:", error);
-      this.addBotMessage(
-        "Failed to attach to the current tab. Please try again."
-      );
-    }
   }
 
   private async getEvalPage(): Promise<{
@@ -183,39 +155,25 @@ export class ChatApp {
     return response;
   }
 
-  private async takeActions(goal: string) {
+  private async takeActions() {
+    const goal = this.userGoal;
+    if (goal === null) return;
+
     const demoId = this.messageInput.dataset.demoId || null;
     try {
-      while (!this.shouldStop) {
-        if (this.isPaused) {
-          this.stoppedState = { demoId, goal, step_number: this.step_number };
-          return;
-        }
+      while (!this.shouldStop && !this.isPaused) {
         const response = await this.takeAction(goal, demoId);
 
-        if (response?.done || !response?.success) {
-          if (!response?.success) {
+        if (response.done || !response.success) {
+          if (!response.success) {
             console.warn("Playwright action failed:", response.error);
           }
           break;
         }
 
-        if (this.isManualMode) {
-          const pauseButton = document.getElementById(
-            "pauseButton"
-          ) as HTMLButtonElement;
-          if (pauseButton) {
-            pauseButton.click();
-          }
-        }
-
-        if (response?.autonomous_mode_ask_user_to_fill) {
-          const pauseButton = document.getElementById(
-            "pauseButton"
-          ) as HTMLButtonElement;
-          if (pauseButton) {
-            pauseButton.click();
-          }
+        if (this.isManualMode || response.autonomous_mode_ask_user_to_fill)
+          await this.onPauseButtonClick();
+        if (response.autonomous_mode_ask_user_to_fill) {
           this.addBotMessage(
             "Fill the field which is highlighted in the page and then resume the process."
           );
@@ -226,76 +184,43 @@ export class ChatApp {
     } catch (error) {
       console.error("Failed to communicate with background script:", error);
     } finally {
-      if (this.shouldStop || !this.isPaused) {
-        this.cleanup();
-      }
+      if (!this.isPaused) this.cleanup();
     }
   }
 
   private cleanup(): void {
+    this.step_number = 0;
+    this.removeProcessingElement();
+    this.shouldStop = false;
+    this.isPaused = false;
+    this.inputContainer.innerHTML = this.originalInputContent;
+
     if (this.messageInput.dataset.demoId) {
       delete this.messageInput.dataset.demoId;
     }
-    this.step_number = 0;
-    this.stoppedState = {
-      demoId: null,
-      goal: null,
-      step_number: null,
-    };
-    this.removeProcessingElement();
-    this.restoreInputContainer();
-  }
 
-  private restoreInputContainer(): void {
-    if (this.shouldStop || !this.isPaused) {
-      this.isProcessing = false;
-      this.inputContainer.innerHTML = this.originalInputContent;
-      this.messageInput = document.getElementById(
-        "messageInput"
-      ) as HTMLInputElement;
-      this.sendButton = document.getElementById(
-        "sendButton"
-      ) as HTMLButtonElement;
-      this.sendButton.disabled = false;
-      this.attachEventListeners();
-      if (!this.isManualMode) {
-        this.step_number = 0;
-      }
-    }
-  }
-
-  private async resumeActions(): Promise<void> {
-    if (this.stoppedState.goal) {
-      this.messageInput.dataset.demoId = this.stoppedState.demoId!;
-      this.step_number = this.stoppedState.step_number!;
-      const goal = this.stoppedState.goal;
-      this.stoppedState = {
-        demoId: null,
-        goal: null,
-        step_number: null,
-      };
-      await this.takeActions(goal);
-    }
+    // Reinitialize elements after resetting the input container
+    this.initializeElements();
+    this.attachEventListeners();
   }
 
   private async sendMessage(): Promise<void> {
     const message = this.messageInput.value.trim();
-    if (!message || this.isProcessing) return;
+    if (!message) return;
 
     this.addUserMessage(message);
     this.messageInput.value = "";
-    await this.generateResponse(message);
-    this.startProcessing();
+    this.addBotMessage(`Taking action for goal: ${message}`);
+    this.userGoal = message;
 
-    try {
-      await this.takeActions(message);
-    } finally {
-      this.stopProcessing();
-    }
+    this.inputContainer.innerHTML = createControlButtons(this.isManualMode);
+    this.setupControlButtons();
+    this.addProcessingElement();
+
+    await this.takeActions();
   }
 
   private addUserMessage(message: string): void {
-    this.cleanup();
     const messageElement = document.createElement("div");
     messageElement.innerHTML = createUserMessage(message);
     this.messages.appendChild(messageElement.firstElementChild!);
@@ -323,6 +248,79 @@ export class ChatApp {
     }
   }
 
+  private async onPauseButtonClick(): Promise<void> {
+    this.removeProcessingElement();
+    const pauseButton = document.getElementById(
+      "pauseButton"
+    ) as HTMLButtonElement;
+    if (!pauseButton) return;
+    this.isPaused = !this.isPaused;
+    this.updatePauseButtonState(pauseButton, this.isPaused);
+    if (!this.isPaused) {
+      this.addProcessingElement();
+      await this.takeActions();
+    }
+  }
+
+  private setupControlButtons(): void {
+    const pauseButton = document.getElementById(
+      "pauseButton"
+    ) as HTMLButtonElement;
+    const stopButton = document.getElementById("stopButton");
+
+    if (pauseButton) {
+      pauseButton.addEventListener("click", async () =>
+        this.onPauseButtonClick()
+      );
+    }
+
+    if (stopButton) {
+      stopButton.addEventListener("click", () => {
+        this.cleanup();
+        this.shouldStop = true;
+        chrome.runtime.sendMessage({
+          type: "STOP_PROCESSING",
+        });
+      });
+    }
+  }
+
+  private scrollToBottom(): void {
+    this.messages.scrollTop = this.messages.scrollHeight;
+  }
+
+  private toggleHighlight(): void {
+    this.isHighlightEnabled = !this.isHighlightEnabled;
+    this.highlightButton.classList.toggle("active");
+    this.highlightButton.textContent = this.isHighlightEnabled
+      ? "Hide Highlight"
+      : "Show Highlight";
+    chrome.runtime.sendMessage({
+      type: "TOGGLE_HIGHLIGHT",
+      is_highlight_enabled: this.isHighlightEnabled,
+    });
+  }
+
+  private async attachCurrentTab(): Promise<void> {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "ATTACH_TAB",
+      });
+      if (response?.success) {
+        this.addBotMessage("Successfully attached to the current tab!");
+      } else {
+        this.addBotMessage(
+          "Failed to attach to the current tab: " + response.error
+        );
+      }
+    } catch (error) {
+      console.error("Error attaching to tab:", error);
+      this.addBotMessage(
+        "Failed to attach to the current tab. Please try again."
+      );
+    }
+  }
+
   private updatePauseButtonState(
     pauseButton: HTMLButtonElement,
     isPaused: boolean
@@ -342,76 +340,5 @@ export class ChatApp {
         pauseButton.style.background = "#4a5568";
       }
     }
-  }
-
-  private startProcessing(): void {
-    this.isProcessing = true;
-    this.shouldStop = false;
-    this.isPaused = false;
-    this.stoppedState = {
-      demoId: null,
-      goal: null,
-      step_number: null,
-    };
-    this.sendButton.disabled = true;
-    this.originalInputContent = this.inputContainer.innerHTML;
-    this.inputContainer.innerHTML = createControlButtons(this.isManualMode);
-    this.setupControlButtons();
-    this.addProcessingElement();
-  }
-
-  private setupControlButtons(): void {
-    const pauseButton = document.getElementById(
-      "pauseButton"
-    ) as HTMLButtonElement;
-    const stopButton = document.getElementById("stopButton");
-
-    if (pauseButton) {
-      pauseButton.addEventListener("click", async () => {
-        if (this.isManualMode) return;
-        this.isPaused = !this.isPaused;
-        this.updatePauseButtonState(pauseButton, this.isPaused);
-        if (!this.isPaused) {
-          await this.resumeActions();
-        }
-      });
-    }
-
-    if (stopButton) {
-      stopButton.addEventListener("click", () => {
-        this.shouldStop = true;
-        this.isPaused = false;
-        this.removeProcessingElement();
-        this.restoreInputContainer();
-        chrome.runtime.sendMessage({
-          type: "STOP_PROCESSING",
-        });
-      });
-    }
-  }
-
-  private stopProcessing(): void {
-    this.removeProcessingElement();
-    this.restoreInputContainer();
-  }
-
-  private async generateResponse(goal: string): Promise<void> {
-    this.addBotMessage(`Taking action for goal: ${goal}`);
-  }
-
-  private scrollToBottom(): void {
-    this.messages.scrollTop = this.messages.scrollHeight;
-  }
-
-  private toggleHighlight(): void {
-    this.isHighlightEnabled = !this.isHighlightEnabled;
-    this.highlightButton.classList.toggle("active");
-    this.highlightButton.textContent = this.isHighlightEnabled
-      ? "Hide Highlight"
-      : "Show Highlight";
-    chrome.runtime.sendMessage({
-      type: "TOGGLE_HIGHLIGHT",
-      is_highlight_enabled: this.isHighlightEnabled,
-    });
   }
 }
