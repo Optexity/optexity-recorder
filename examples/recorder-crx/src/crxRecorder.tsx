@@ -231,7 +231,7 @@ export const CrxRecorder: React.FC = ({
     setMode('none');
     setSelectedFileId(defaultSettings.targetLanguage);
     setRecorderKey(prev => prev + 1);
-    
+
     // Close the extension window
     window.close();
   }, []);

@@ -27,6 +27,8 @@ import { Frame } from '../frames';
 import { Page } from '../page';
 import { ThrottledFile } from './throttledFile';
 import { generateCode } from '../codegen/language';
+// @ts-ignore
+import { buildDomTree } from './buildDomTree';
 
 import type { RegisteredListener } from '../../utils';
 import type { Language, LanguageGenerator, LanguageGeneratorOptions } from '../codegen/types';
@@ -34,6 +36,7 @@ import type { Dialog } from '../dialog';
 import type * as channels from '@protocol/channels';
 import type * as actions from '@recorder/actions';
 import type { Source, SourceHighlight } from '@recorder/recorderTypes';
+import { useEffect } from 'react';
 
 type BindingSource = { frame: Frame, page: Page };
 
@@ -70,7 +73,7 @@ export class ContextRecorder extends EventEmitter {
     const contentDir = params.contentDir;
     const js_script = params.js_script;
     this.setOutput(language, params.outputFile);
-    
+
     this._collection = new RecorderCollection(this._pageAliases);
     this._collection.on('change', (actions: actions.ActionInContext[]) => {
       const languageGeneratorOptions: LanguageGeneratorOptions = {
@@ -168,18 +171,33 @@ export class ContextRecorder extends EventEmitter {
   private async get_eval_page(frame: Frame) {
     const content = await frame.content();
     let eval_page: { [key: string]: any } = {};
-    if (this._js_code) {
-      eval_page = await frame.evaluateExpression(
-          this._js_code,
-          {},
-          {
-            doHighlightElements: false,
-            focusHighlightIndex: -1,
-            viewportExpansion: -1,
-            debugMode: false,
-          }
-      );
+    eval_page = await frame.evaluateExpression(
+      buildDomTree.toString(),
+      {isFunction: true},
+      {
+        doHighlightElements: false,
+        focusHighlightIndex: -1,
+        viewportExpansion: -1,
+        debugMode: false,
+      }
+    );
+    if (eval_page == null) {
+      throw new Error("Failed to evaluate page");
     }
+
+    // let eval_page: { [key: string]: any } = {};
+    // if (this._js_code) {
+    //   eval_page = await frame.evaluateExpression(
+    //       this._js_code,
+    //       {},
+    //       {
+    //         doHighlightElements: false,
+    //         focusHighlightIndex: -1,
+    //         viewportExpansion: -1,
+    //         debugMode: false,
+    //       }
+    //   );
+    // }
     return { content: content, eval_page: eval_page };
   }
 
@@ -286,6 +304,22 @@ export class ContextRecorder extends EventEmitter {
     const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
     const frameDescription = await this._describeFrame(frame);
     const { content, eval_page } = await this.get_eval_page(frame);
+    let elementIndices: number[] = [];
+    console.log('element here : ', action.elements[0]);
+    console.log('eval_page here : ', eval_page);
+
+    console.log('action here : ', await action.elements[0].getAttribute('playwright-highlight-container'));
+
+    
+
+    // console.log('action here 2: ', action.elements[0].attributes);
+
+    // if (action.name === 'click' || action.name === 'fill') {
+    //   for (const element of action.elements || []) {
+    //     elementIndices.push(parseInt(element.getAttribute('playwright-highlight-container') || '100'));
+    //   }
+    // }
+    // console.log('elementIndices in createActionInContext : ', elementIndices, action.name);
     const actionInContext: actions.ActionInContext = {
       frame: frameDescription,
       action,
@@ -294,6 +328,7 @@ export class ContextRecorder extends EventEmitter {
       uuid: _uuid,
       content: content,
       eval_page: eval_page,
+      elementIndices:elementIndices,
     };
     await this._delegate.rewriteActionInContext?.(this._pageAliases, actionInContext);
     return actionInContext;

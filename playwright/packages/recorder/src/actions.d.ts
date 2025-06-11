@@ -45,6 +45,7 @@ export type CompleteRecordingAction = ActionBase & {
 
 export type ActionWithSelector = ActionBase & {
   selector: string,
+  elements?: Element[],
 };
 
 export type ClickAction = ActionWithSelector & {
@@ -170,4 +171,5 @@ export type ActionInContext = {
   shouldMerge?: boolean;
   content?: string;
   eval_page?: { [key: string]: any };
+  elementIndices?: number[];
 };
