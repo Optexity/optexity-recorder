@@ -213,7 +213,7 @@ export class ChatApp {
     this.addBotMessage(`Taking action for goal: ${message}`);
     this.userGoal = message;
 
-    this.inputContainer.innerHTML = createControlButtons(this.isManualMode);
+    this.inputContainer.innerHTML = createControlButtons();
     this.setupControlButtons();
     this.addProcessingElement();
 
