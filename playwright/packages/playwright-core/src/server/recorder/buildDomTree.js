@@ -1432,6 +1432,10 @@ export function buildDomTree(args) {
     parentIframe = null,
     isParentHighlighted = false
   ) {
+    if (node.nodeType === Node.ELEMENT_NODE && !node.hasAttribute("optexity-bid")) {
+      const uuid = crypto.randomUUID();
+      node.setAttribute("optexity-bid", uuid);
+    }
     // Fast rejection checks first
     if (
       !node ||

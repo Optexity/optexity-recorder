@@ -185,19 +185,6 @@ export class ContextRecorder extends EventEmitter {
       throw new Error("Failed to evaluate page");
     }
 
-    // let eval_page: { [key: string]: any } = {};
-    // if (this._js_code) {
-    //   eval_page = await frame.evaluateExpression(
-    //       this._js_code,
-    //       {},
-    //       {
-    //         doHighlightElements: false,
-    //         focusHighlightIndex: -1,
-    //         viewportExpansion: -1,
-    //         debugMode: false,
-    //       }
-    //   );
-    // }
     return { content: content, eval_page: eval_page };
   }
 
@@ -304,22 +291,8 @@ export class ContextRecorder extends EventEmitter {
     const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
     const frameDescription = await this._describeFrame(frame);
     const { content, eval_page } = await this.get_eval_page(frame);
-    let elementIndices: number[] = [];
-    console.log('element here : ', action.elements[0]);
     console.log('eval_page here : ', eval_page);
 
-    console.log('action here : ', await action.elements[0].getAttribute('playwright-highlight-container'));
-
-    
-
-    // console.log('action here 2: ', action.elements[0].attributes);
-
-    // if (action.name === 'click' || action.name === 'fill') {
-    //   for (const element of action.elements || []) {
-    //     elementIndices.push(parseInt(element.getAttribute('playwright-highlight-container') || '100'));
-    //   }
-    // }
-    // console.log('elementIndices in createActionInContext : ', elementIndices, action.name);
     const actionInContext: actions.ActionInContext = {
       frame: frameDescription,
       action,
@@ -328,7 +301,7 @@ export class ContextRecorder extends EventEmitter {
       uuid: _uuid,
       content: content,
       eval_page: eval_page,
-      elementIndices:elementIndices,
+      elementIndices: action.elementIndices,
     };
     await this._delegate.rewriteActionInContext?.(this._pageAliases, actionInContext);
     return actionInContext;

@@ -23,7 +23,7 @@ import type { ElementText } from '../selectorUtils';
 import type * as actions from '@recorder/actions';
 import type { ElementInfo, Mode, OverlayState, UIState } from '@recorder/recorderTypes';
 import type { Language } from '@isomorphic/locatorGenerators';
-import type { Set, Map } from '@isomorphic/builtins';
+// import type { Set, Map } from '@isomorphic/builtins';
 
 const HighlightColors = {
   multiple: '#f6b26b7f',
@@ -81,7 +81,7 @@ class InspectTool implements RecorderTool {
   }
 
   cursor() {
-    return 'pointer';
+    return 'default';
   }
 
   cleanup() {
@@ -203,7 +203,7 @@ class RecordActionTool implements RecorderTool {
   }
 
   cursor() {
-    return 'pointer';
+    return 'default';
   }
 
   cleanup() {
@@ -241,14 +241,7 @@ class RecordActionTool implements RecorderTool {
 
     this._cancelPendingClickAction();
 
-    let elements = [this._hoveredElement!];
-    for (const element of this._hoveredModel!.elements) {
-      elements.push(element as HTMLElement);
-    }
-    console.log('elements in click : ', elements, this._hoveredElement);
-    for (const element of this._hoveredModel!.elements) {
-      console.log('element : ', element);
-    }
+    const elementIndices: string[] = this.getIndices(this._hoveredElement, null, this._hoveredModel?.elements);
 
     // Stall click in case we are observing double-click.
     if (event.detail === 1) {
@@ -256,7 +249,7 @@ class RecordActionTool implements RecorderTool {
         action: {
           name: 'click',
           selector: this._hoveredModel!.selector,
-          elements: elements,
+          elementIndices: elementIndices,
           position: positionForEvent(event),
           signals: [],
           button: buttonForEvent(event),
@@ -280,17 +273,13 @@ class RecordActionTool implements RecorderTool {
       return;
 
     this._cancelPendingClickAction();
-    let elements = [this._hoveredElement!];
-    for (const element of this._hoveredModel!.elements) {
-      elements.push(element as HTMLElement);
-    }
-    console.log('elements in dblclick : ', elements);
+    const elementIndices: string[] = this.getIndices(this._hoveredElement, null, this._hoveredModel?.elements);
 
     this._performAction({
       name: 'click',
       selector: this._hoveredModel!.selector,
       position: positionForEvent(event),
-      elements: elements,
+      elementIndices: elementIndices,
       signals: [],
       button: buttonForEvent(event),
       modifiers: modifiersForEvent(event),
@@ -310,6 +299,28 @@ class RecordActionTool implements RecorderTool {
     this._pendingClickAction = undefined;
   }
 
+  getIndices(hoveredElement: HTMLElement|null, target: HTMLElement|null, hoveredModelElements: Element[]|null | undefined) {
+    const elementIndices: string[] = [];
+    const elements = [hoveredElement, target];
+    if (hoveredModelElements && hoveredModelElements.length > 0) {
+      for (const element of hoveredModelElements)
+        elements.push(element as HTMLElement);
+    }
+    for (const element of elements) {
+      if (element === null || element === undefined)
+        continue;
+      try {
+        const bid = element.getAttribute('optexity-bid');
+        if (bid)
+          elementIndices.push(bid);
+      } catch (error) {
+        console.log('error in bid in getIndices : ', error);
+      }
+    }
+    // eslint-disable-next-line no-restricted-globals
+    return [...new Set(elementIndices)];
+  }
+
   onContextMenu(event: MouseEvent) {
     // the 'contextmenu' event is triggered by a right-click or equivalent action,
     // and it prevents the click event from firing for that action, so we always
@@ -321,16 +332,12 @@ class RecordActionTool implements RecorderTool {
     if (this._consumedDueToNoModel(event, this._hoveredModel))
       return;
 
-    let elements = [this._hoveredElement!];
-    for (const element of this._hoveredModel!.elements) {
-      elements.push(element as HTMLElement);
-    }
-    console.log('elements in contextmenu : ', elements);
+    const elementIndices: string[] = this.getIndices(this._hoveredElement, null, this._hoveredModel?.elements);
 
     this._performAction({
       name: 'click',
       selector: this._hoveredModel!.selector,
-      elements: elements,
+      elementIndices: elementIndices,
       position: positionForEvent(event),
       signals: [],
       button: 'right',
@@ -401,21 +408,14 @@ class RecordActionTool implements RecorderTool {
       });
       return;
     }
-    // let elements = [this._hoveredElement!];
-    // elements.push(target);
-    let elements = [target]
-    // for (const element of this._hoveredModel!.elements) {
-    //   elementIndices.push(parseInt(element.getAttribute('playwright-highlight-container') || '25'));
-    // }
-
-    console.log('elements in fill : ', elements);
+    const elementIndices: string[] = this.getIndices(this._hoveredElement, target, this._hoveredModel?.elements);
 
     if (isRangeInput(target)) {
       this._performAction({
         name: 'fill',
         // must use hoveredModel instead of activeModel for it to work in webkit
         selector: this._hoveredModel!.selector,
-        elements: elements,
+        elementIndices: elementIndices,
         signals: [],
         text: target.value,
       });
@@ -434,7 +434,7 @@ class RecordActionTool implements RecorderTool {
       this._performAction({
         name: 'fill',
         selector: this._activeModel!.selector,
-        elements: elements,
+        elementIndices: elementIndices,
         signals: [],
         text: target.isContentEditable ? target.innerText : (target as HTMLInputElement).value,
       });
@@ -645,7 +645,7 @@ class TextAssertionTool implements RecorderTool {
   }
 
   cursor() {
-    return 'pointer';
+    return 'default';
   }
 
   cleanup() {
