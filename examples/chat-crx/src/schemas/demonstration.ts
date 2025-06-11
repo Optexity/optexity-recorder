@@ -12,6 +12,7 @@ export interface ClickElementAction {
   locators: Locator[];
   command: string | null;
   action_description: string | null;
+  uuid: string | null;
 }
 
 export interface InputTextAction {
@@ -23,11 +24,13 @@ export interface InputTextAction {
   command: string | null;
   fill_value_name: string | null;
   action_description: string | null;
+  uuid: string | null;
 }
 
 export interface DoneAction {
   text: string;
   success: boolean;
+  uuid: string | null;
 }
 
 export interface NextStepResponse {

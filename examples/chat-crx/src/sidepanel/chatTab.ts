@@ -164,9 +164,6 @@ export class ChatApp {
 
   private async takeAction(goal: string, demoId: string | null) {
     const { eval_page, url, page_title } = await this.getEvalPage();
-    console.log("Eval page: ", eval_page);
-    console.log("URL: ", url);
-    console.log("Page title: ", page_title);
     const next_step_response = await this.getNextStepResponse(
       goal,
       this.step_number,
@@ -203,7 +200,14 @@ export class ChatApp {
           break;
         }
 
-        if (this.isManualMode) break;
+        if (this.isManualMode) {
+          const pauseButton = document.getElementById(
+            "pauseButton"
+          ) as HTMLButtonElement;
+          if (pauseButton) {
+            pauseButton.click();
+          }
+        }
 
         if (response?.autonomous_mode_ask_user_to_fill) {
           const pauseButton = document.getElementById(
@@ -223,15 +227,16 @@ export class ChatApp {
       console.error("Failed to communicate with background script:", error);
     } finally {
       if (this.shouldStop || !this.isPaused) {
-        this.cleanup(demoId);
+        this.cleanup();
       }
     }
   }
 
-  private cleanup(demoId: string | null): void {
-    if (demoId) {
+  private cleanup(): void {
+    if (this.messageInput.dataset.demoId) {
       delete this.messageInput.dataset.demoId;
     }
+    this.step_number = 0;
     this.stoppedState = {
       demoId: null,
       goal: null,
@@ -290,6 +295,7 @@ export class ChatApp {
   }
 
   private addUserMessage(message: string): void {
+    this.cleanup();
     const messageElement = document.createElement("div");
     messageElement.innerHTML = createUserMessage(message);
     this.messages.appendChild(messageElement.firstElementChild!);
