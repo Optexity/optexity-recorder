@@ -20,8 +20,9 @@
     "generate:pw": "cd ./playwright && node ./utils/generate_injected.js",
     "build:examples:todomvc": "npm run build --prefix ./examples/todomvc-crx",
     "build:examples:recorder": "npm run build --prefix ./examples/recorder-crx",
-    "build:examples": "npm run build:examples:todomvc && npm run build:examples:recorder",
-    "clean:examples": "rimraf ./examples/recorder-crx/dist && rimraf ./examples/todomvc-crx/dist",
+    "build:examples:chat": "npm run build --prefix ./examples/chat-crx",
+    "build:examples": "npm run build:examples:todomvc && npm run build:examples:recorder && npm run build:examples:chat",
+    "clean:examples": "rimraf ./examples/recorder-crx/dist && rimraf ./examples/todomvc-crx/dist && rimraf ./examples/chat-crx/dist",
     "build:tests": "npm run build --prefix ./tests",
     "clean:tests": "rimraf ./tests/playwright-report && rimraf ./tests/test-results",
     "generate:crx": "node ./utils/generate_test_types.js",
@@ -29,6 +30,7 @@
     "build:crx": "npm run generate:pw && npm run generate:crx && vite build",
     "clean:crx": "rimraf ./lib",
     "build": "npm run lint && npm run ci:pw:bundles && npm run build:crx && npm run build:examples && npm run build:tests",
+    "build:chat": "npm run lint && npm run ci:pw:bundles && npm run build:crx && npm run build:examples:chat && npm run build:tests",
     "clean": "npm run clean:pw && npm run clean:examples && npm run clean:tests && npm run clean:crx",
     "test:install": "cd ./tests && npx playwright install --with-deps chromium",
     "test": "cd ./tests && npx playwright test",
@@ -38,6 +40,7 @@
   "workspaces": [
     "examples/recorder-crx",
     "examples/todomvc-crx",
+    "examples/chat-crx",
     "tests"
   ],
   "exports": {
@@ -56,6 +59,9 @@
     "./package.json": "./package.json"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.6.4",
+    "@types/lz-string": "^1.4.4",
+    "lz-string": "^1.4.4",
     "@eslint/compat": "^1.2.6",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.19.0",

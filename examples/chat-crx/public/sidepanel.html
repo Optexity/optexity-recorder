@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Optexity Chat</title>
+  <link rel="stylesheet" href="/styles/sidepanel.css" />
+</head>
+
+<body>
+  <div class="tab-container">
+    <div class="tab-header">
+      <button class="tab-button active" data-tab="chat">Optexity Chat</button>
+      <button class="tab-button" data-tab="demos">Recorded Demonstrations</button>
+    </div>
+
+    <div class="tab-content active" id="chat-tab">
+      <div class="header">
+        <div class="header-controls">
+          <button id="attachButton" class="attach-button">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 11v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8" />
+              <path d="M12 3v12" />
+              <path d="M8 7l4-4 4 4" />
+            </svg>
+            Attach This Tab
+          </button>
+          <button id="highlightButton" class="attach-button">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/>
+              <path d="M15 3v6h6"/>
+              <path d="M10 16l4-4"/>
+              <path d="M8 14h0"/>
+              <path d="M16 14h0"/>
+              <path d="M9 14a1 1 0 0 0 2 0v-3a1 1 0 0 1 2 0"/>
+            </svg>
+            Show Highlight
+          </button>
+          <div class="toggle-container">
+            <span class="mode-label">Autonomous</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="modeToggle" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="mode-label">Manual</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-container">
+        <div class="messages" id="messages"></div>
+
+        <div class="input-container" id="input-container">
+          <div class="input-wrapper">
+            <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off" />
+            <button id="sendButton">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m22 2-7 20-4-9-9-4z" />
+                <path d="M22 2 11 13" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="demos-tab">
+      <div class="demos-container">
+        <div class="demos-list" id="demos-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/sidepanel.js"></script>
+</body>
+
+</html>
