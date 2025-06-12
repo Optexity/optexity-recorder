@@ -1421,21 +1421,42 @@ export class Frame extends SdkObject {
   async press(metadata: CallMetadata, selector: string, key: string, options: { delay?: number, noWaitAfter?: boolean } & types.TimeoutOptions & types.StrictOptions = {}) {
     const controller = new ProgressController(metadata, this);
     return controller.run(async progress => {
-      return dom.assertDone(await this._retryWithProgressIfNotConnected(progress, selector, options.strict, true /* performActionPreChecks */, handle => handle._press(progress, key, options)));
+      const result = await this._retryWithProgressIfNotConnected(progress, selector, options.strict, true /* performActionPreChecks */, handle => handle._press(progress, key, options), true);
+      if (typeof result === 'object' && 'bid' in result) {
+        dom.assertDone(result.result);
+        return result.bid;
+      } else {
+        dom.assertDone(result);
+        return null;
+      }
     }, this._page._timeoutSettings.timeout(options));
   }
 
   async check(metadata: CallMetadata, selector: string, options: types.PointerActionWaitOptions = {}) {
     const controller = new ProgressController(metadata, this);
     return controller.run(async progress => {
-      return dom.assertDone(await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._setChecked(progress, true, options)));
+      const result = await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._setChecked(progress, true, options), true);
+      if (typeof result === 'object' && 'bid' in result) {
+        dom.assertDone(result.result);
+        return result.bid;
+      } else {
+        dom.assertDone(result);
+        return null;
+      }
     }, this._page._timeoutSettings.timeout(options));
   }
 
   async uncheck(metadata: CallMetadata, selector: string, options: types.PointerActionWaitOptions = {}) {
     const controller = new ProgressController(metadata, this);
     return controller.run(async progress => {
-      return dom.assertDone(await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._setChecked(progress, false, options)));
+      const result = await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._setChecked(progress, false, options), true);
+      if (typeof result === 'object' && 'bid' in result) {
+        dom.assertDone(result.result);
+        return result.bid;
+      } else {
+        dom.assertDone(result);
+        return null;
+      }
     }, this._page._timeoutSettings.timeout(options));
   }
 

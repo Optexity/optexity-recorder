@@ -57,7 +57,9 @@ export async function performAction(pageAliases: Map<Page, string>, actionInCont
   if (action.name === 'press') {
     const modifiers = toKeyboardModifiers(action.modifiers);
     const shortcut = [...modifiers, action.key].join('+');
-    await mainFrame.press(callMetadata, selector, shortcut, { timeout: kActionTimeout, strict: true });
+    const bid = await mainFrame.press(callMetadata, selector, shortcut, { timeout: kActionTimeout, strict: true });
+    if (bid)
+      actionInContext.elementIndices = bid;
     return;
   }
 
@@ -74,12 +76,16 @@ export async function performAction(pageAliases: Map<Page, string>, actionInCont
   }
 
   if (action.name === 'check') {
-    await mainFrame.check(callMetadata, selector, { timeout: kActionTimeout, strict: true });
+    const bid = await mainFrame.check(callMetadata, selector, { timeout: kActionTimeout, strict: true });
+    if (bid)
+      actionInContext.elementIndices = bid;
     return;
   }
 
   if (action.name === 'uncheck') {
-    await mainFrame.uncheck(callMetadata, selector, { timeout: kActionTimeout, strict: true });
+    const bid = await mainFrame.uncheck(callMetadata, selector, { timeout: kActionTimeout, strict: true });
+    if (bid)
+      actionInContext.elementIndices = bid;
     return;
   }
 
