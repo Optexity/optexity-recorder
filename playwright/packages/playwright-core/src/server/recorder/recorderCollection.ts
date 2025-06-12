@@ -65,7 +65,6 @@ export class RecorderCollection extends EventEmitter {
   }
 
   private async _addAction(actionInContext: actions.ActionInContext, callback?: () => Promise<void>) {
-    // console.log('recorder _addAction', actionInContext);
     if (!this._enabled)
       return;
     if (actionInContext.action.name === 'openPage' || actionInContext.action.name === 'closePage') {
@@ -74,9 +73,10 @@ export class RecorderCollection extends EventEmitter {
       return;
     }
 
-    this._actions.push(actionInContext);
-    this._fireChange();
+    // DID this so that bid is assigned first to actionInContext
     await callback?.().catch();
+    this._actions.push(actionInContext);
+    this._fireChange();    
     actionInContext.endTime = monotonicTime();
   }
 

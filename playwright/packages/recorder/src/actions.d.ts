@@ -37,7 +37,6 @@ export type ActionName =
 export type ActionBase = {
   name: ActionName,
   signals: Signal[],
-  elementIndices?: string[],
 };
 
 export type CompleteRecordingAction = ActionBase & {
@@ -46,7 +45,6 @@ export type CompleteRecordingAction = ActionBase & {
 
 export type ActionWithSelector = ActionBase & {
   selector: string,
-  elementIndices?: string[],
 };
 
 export type ClickAction = ActionWithSelector & {
@@ -172,5 +170,5 @@ export type ActionInContext = {
   shouldMerge?: boolean;
   content?: string;
   eval_page?: { [key: string]: any };
-  elementIndices?: string[];
+  elementIndices?: string;
 };

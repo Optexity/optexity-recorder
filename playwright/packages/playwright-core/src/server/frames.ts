@@ -1125,7 +1125,9 @@ export class Frame extends SdkObject {
     selector: string,
     strict: boolean | undefined,
     performActionPreChecks: boolean,
-    action: (handle: dom.ElementHandle<Element>) => Promise<R | 'error:notconnected'>): Promise<R> {
+    action: (handle: dom.ElementHandle<Element>) => Promise<R | 'error:notconnected'>,
+    return_bid: boolean = false
+  ): Promise<R | { result: Awaited<R>; bid: string | null; }> {
     progress.log(`waiting for ${this._asLocator(selector)}`);
     return this.retryWithProgressAndTimeouts(progress, [0, 20, 50, 100, 100, 500], async continuePolling => {
       if (performActionPreChecks)
@@ -1148,13 +1150,21 @@ export class Frame extends SdkObject {
         } else if (element) {
           log = `  locator resolved to ${injected.previewNode(element)}`;
         }
-        return { log, success: !!element, element };
+        try {
+          const bid = element?.getAttribute('optexity-bid') || null;
+          console.log('bid in _retryWithProgressIfNotConnected : ', bid);
+          return { log, success: !!element, element, bid };
+        } catch (e) {
+          console.log('error : ', e);
+          return { log, success: !!element, element, bid: null };
+        }
       }, { info: resolved.info, callId: progress.metadata.id });
-      const { log, success } = await result.evaluate(r => ({ log: r.log, success: r.success }));
+      const { log, success, bid } = await result.evaluate(r => ({ log: r.log, success: r.success, bid: r.bid }));
       if (log)
         progress.log(log);
       if (!success) {
         result.dispose();
+        console.log('continuePolling in _retryWithProgressIfNotConnected : ', continuePolling);
         return continuePolling;
       }
       const element = await result.evaluateHandle(r => r.element) as dom.ElementHandle<Element>;
@@ -1163,8 +1173,11 @@ export class Frame extends SdkObject {
         const result = await action(element);
         if (result === 'error:notconnected') {
           progress.log('element was detached from the DOM, retrying');
+          console.log('result in _retryWithProgressIfNotConnected : ', result);
           return continuePolling;
         }
+        if (return_bid)
+          return { result, bid };
         return result;
       } finally {
         element?.dispose();
@@ -1182,14 +1195,29 @@ export class Frame extends SdkObject {
   async click(metadata: CallMetadata, selector: string, options: { noWaitAfter?: boolean } & types.MouseClickOptions & types.PointerActionWaitOptions) {
     const controller = new ProgressController(metadata, this);
     return controller.run(async progress => {
-      return dom.assertDone(await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._click(progress, { ...options, waitAfter: !options.noWaitAfter })));
+      const result = await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._click(progress, { ...options, waitAfter: !options.noWaitAfter }), true);
+      if (typeof result === 'object' && 'bid' in result) {
+        dom.assertDone(result.result);
+        console.log('bid in click : ', result.bid);
+        return result.bid;
+      } else {
+        dom.assertDone(result);
+        return null;
+      }
     }, this._page._timeoutSettings.timeout(options));
   }
 
   async dblclick(metadata: CallMetadata, selector: string, options: types.MouseMultiClickOptions & types.PointerActionWaitOptions = {}) {
     const controller = new ProgressController(metadata, this);
     return controller.run(async progress => {
-      return dom.assertDone(await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._dblclick(progress, options)));
+      const result = await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._dblclick(progress, options));
+      if (typeof result === 'object' && 'bid' in result) {
+        dom.assertDone(result.result);
+        return result.bid;
+      } else {
+        dom.assertDone(result);
+        return null;
+      }
     }, this._page._timeoutSettings.timeout(options));
   }
 
@@ -1234,7 +1262,14 @@ export class Frame extends SdkObject {
   async fill(metadata: CallMetadata, selector: string, value: string, options: types.TimeoutOptions & types.StrictOptions & { force?: boolean }) {
     const controller = new ProgressController(metadata, this);
     return controller.run(async progress => {
-      return dom.assertDone(await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._fill(progress, value, options)));
+      const result = await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._fill(progress, value, options), true);
+      if (typeof result === 'object' && 'bid' in result) {
+        dom.assertDone(result.result);
+        return result.bid;
+      } else {
+        dom.assertDone(result);
+        return null;
+      }
     }, this._page._timeoutSettings.timeout(options));
   }
 

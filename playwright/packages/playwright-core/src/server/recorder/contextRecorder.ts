@@ -291,7 +291,15 @@ export class ContextRecorder extends EventEmitter {
     const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
     const frameDescription = await this._describeFrame(frame);
     const { content, eval_page } = await this.get_eval_page(frame);
+    console.log('--------------------------------')
+    console.log('action in _createActionInContext : ', action);
 
+    try {
+      console.log('selector in _createActionInContext : ', action.selector);
+    } catch (e) {
+      console.log('Error: ', e);
+    }
+    // console.log('eval_page : ', eval_page);
     const actionInContext: actions.ActionInContext = {
       frame: frameDescription,
       action,
@@ -300,7 +308,7 @@ export class ContextRecorder extends EventEmitter {
       uuid: _uuid,
       content: content,
       eval_page: eval_page,
-      elementIndices: action.elementIndices,
+      // elementIndices: action.elementIndices,
     };
     await this._delegate.rewriteActionInContext?.(this._pageAliases, actionInContext);
     return actionInContext;

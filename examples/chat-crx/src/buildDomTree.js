@@ -1432,6 +1432,10 @@ export function buildDomTree(args) {
     parentIframe = null,
     isParentHighlighted = false
   ) {
+    if (node.nodeType === Node.ELEMENT_NODE && !node.hasAttribute("optexity-bid")) {
+      const uuid = crypto.randomUUID();
+      node.setAttribute("optexity-bid", uuid);
+    }
     // Fast rejection checks first
     if (
       !node ||
@@ -1457,6 +1461,10 @@ export function buildDomTree(args) {
         xpath: "/body",
         children: [],
       };
+
+      if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("optexity-bid")) {
+        nodeData.attributes["optexity-bid"] = node.getAttribute("optexity-bid");
+      }
 
       // Process children of body
       for (const child of node.childNodes) {
@@ -1557,6 +1565,10 @@ export function buildDomTree(args) {
       for (const name of attributeNames) {
         nodeData.attributes[name] = node.getAttribute(name);
       }
+    }
+
+    if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("optexity-bid")) {
+      nodeData.attributes["optexity-bid"] = node.getAttribute("optexity-bid");
     }
 
     let nodeWasHighlighted = false;

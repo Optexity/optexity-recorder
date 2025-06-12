@@ -1462,6 +1462,10 @@ export function buildDomTree(args) {
         children: [],
       };
 
+      if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("optexity-bid")) {
+        nodeData.attributes["optexity-bid"] = node.getAttribute("optexity-bid");
+      }
+
       // Process children of body
       for (const child of node.childNodes) {
         const domElement = buildDomTree(child, parentIframe, false); // Body's children have no highlighted parent initially
@@ -1561,6 +1565,10 @@ export function buildDomTree(args) {
       for (const name of attributeNames) {
         nodeData.attributes[name] = node.getAttribute(name);
       }
+    }
+
+    if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("optexity-bid")) {
+      nodeData.attributes["optexity-bid"] = node.getAttribute("optexity-bid");
     }
 
     let nodeWasHighlighted = false;

@@ -82,7 +82,6 @@ export const CrxRecorder: React.FC = ({
           if (message.eval_page) {
             globalEvalPages.set(message.file_id, message.eval_page);
             globalContents.set(message.file_id, message.content);
-            console.log('file_id : ', message.file_id);
             sendResponse({ success: true });
           } else {
             console.log('message.eval_page is null');

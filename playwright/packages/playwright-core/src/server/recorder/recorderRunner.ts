@@ -47,7 +47,10 @@ export async function performAction(pageAliases: Map<Page, string>, actionInCont
 
   if (action.name === 'click') {
     const options = toClickOptions(action);
-    await mainFrame.click(callMetadata, selector, { ...options, timeout: kActionTimeout, strict: true });
+    const bid = await mainFrame.click(callMetadata, selector, { ...options, timeout: kActionTimeout, strict: true });
+    if (bid) {
+      actionInContext.elementIndices = bid;
+    }
     return;
   }
 
@@ -59,7 +62,9 @@ export async function performAction(pageAliases: Map<Page, string>, actionInCont
   }
 
   if (action.name === 'fill') {
-    await mainFrame.fill(callMetadata, selector, action.text, { timeout: kActionTimeout, strict: true });
+    const bid = await mainFrame.fill(callMetadata, selector, action.text, { timeout: kActionTimeout, strict: true });
+    if (bid)
+      actionInContext.elementIndices = bid;
     return;
   }
 
