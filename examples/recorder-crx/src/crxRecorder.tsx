@@ -24,6 +24,10 @@ import './crxRecorder.css';
 import './form.css';
 import { TaskDescription } from './taskDescription';
 
+// Global Maps to store eval pages and contents
+const globalEvalPages = new Map<string, { [key: string]: any }>();
+const globalContents = new Map<string, string>();
+
 function setElementPicked(elementInfo: ElementInfo, userGesture?: boolean) {
   window.playwrightElementPicked(elementInfo, userGesture);
 }
@@ -72,6 +76,23 @@ export const CrxRecorder: React.FC = ({
 
   React.useEffect(() => {
     const port = chrome.runtime.connect({ name: 'recorder' });
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message.type === 'OPTEXITY_EVAL_PAGE') {
+        (async () => {
+          if (message.eval_page) {
+            globalEvalPages.set(message.file_id, message.eval_page);
+            globalContents.set(message.file_id, message.content);
+            console.log('file_id : ', message.file_id);
+            sendResponse({ success: true });
+          } else {
+            console.log('message.eval_page is null');
+            sendResponse({ success: false });
+          }
+        })();
+
+        return true; // ✅ Important to keep the message channel open for async response
+      }
+    });
     const onMessage = (msg: any) => {
       if (!('type' in msg) || msg.type !== 'recorder')
         return;
@@ -142,12 +163,26 @@ export const CrxRecorder: React.FC = ({
       return;
 
     const url = code?.match(/await page\.goto\('([^']+)'\)/)?.[1] || '';
-    const FileContent = code;
-    const FileName = 'generated_code.js';
 
     const formData = new FormData();
+    const codeFile = new File([code], 'generated_code.js', { type: 'text/plain' });
+    console.log('making api call : ');
+    console.log('codeFile : ', codeFile.name);
+    console.log('allEvalPages : ', Array.from(globalEvalPages.keys()));
+    console.log('allContents : ', Array.from(globalContents.keys()));
+    formData.append('files', codeFile);
+
+    for (const fileId of globalEvalPages.keys()) {
+      const evalPage = globalEvalPages.get(fileId);
+      const content = globalContents.get(fileId);
+      if (evalPage && content) {
+        const evalFile = new File([JSON.stringify(evalPage)], `${fileId}_eval_page.json`, { type: 'application/json' });
+        const contentFile = new File([content], `${fileId}_content.txt`, { type: 'text/plain' });
+        formData.append('files', evalFile);
+        formData.append('files', contentFile);
+      }
+    }
     formData.append('url', url);
-    formData.append('files', new File([FileContent], FileName, { type: 'text/plain' }));
 
     (async () => {
       try {
@@ -158,23 +193,12 @@ export const CrxRecorder: React.FC = ({
             'Authorization': 'Bearer test',
           },
         });
-        const data = await response.json();
-        console.log('Fetched:', data);
-
-        // Clear state
-        setSources([]);
-        setPaused(false);
-        setLog(new Map<string, CallLog>());
-        setMode('none');
-        setSelectedFileId(defaultSettings.targetLanguage);
-        setRecorderKey(prev => prev + 1);
-
-        // Open optexity.com in new tab and close extension
-        window.open('https://optexity.com', '_blank');
-        window.close();
+        await response.json();
       } catch (error) {
         console.error('Fetch error:', error);
-
+      } finally {
+        globalEvalPages.clear();
+        globalContents.clear();
         // Clear state
         setSources([]);
         setPaused(false);
@@ -182,10 +206,9 @@ export const CrxRecorder: React.FC = ({
         setMode('none');
         setSelectedFileId(defaultSettings.targetLanguage);
         setRecorderKey(prev => prev + 1);
-
         // Open optexity.com in new tab and close extension
-        window.open('https://optexity.com', '_blank');
-        window.close();
+        // window.open('https://optexity.com', '_blank');
+        // window.close();
       }
     })();
 
@@ -224,6 +247,8 @@ export const CrxRecorder: React.FC = ({
   };
 
   const handleDelete = React.useCallback(() => {
+    globalEvalPages.clear();
+    globalContents.clear();
     // Clear all state first
     setSources([]);
     setPaused(false);

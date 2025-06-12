@@ -291,7 +291,6 @@ export class ContextRecorder extends EventEmitter {
     const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
     const frameDescription = await this._describeFrame(frame);
     const { content, eval_page } = await this.get_eval_page(frame);
-    console.log('eval_page here : ', eval_page);
 
     const actionInContext: actions.ActionInContext = {
       frame: frameDescription,

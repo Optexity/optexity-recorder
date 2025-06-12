@@ -40,6 +40,17 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
   }
 
   generateAction(actionInContext: actions.ActionInContext): string {
+    try{
+    const response = chrome.runtime.sendMessage({
+      type: 'OPTEXITY_EVAL_PAGE',
+      eval_page: actionInContext.eval_page,
+      content: actionInContext.content,
+        file_id: actionInContext.uuid,
+      });
+      console.log('response : ', response);
+    } catch (error) {
+      console.log('error in generateAction javascript : ', error);
+    }
     const action = actionInContext.action;
     if (this._isTest && actionInContext.frame.pageAlias === 'page' && (action.name === 'openPage' || action.name === 'closePage'))
       return '';
@@ -49,7 +60,7 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
 
     const shouldMerge = actionInContext.shouldMerge ? actionInContext.shouldMerge : false;
     const recording_complete = action.name === 'completeRecording' ? true : false;
-    const comment = ` // {"uuid": "${actionInContext.uuid}" , "merge_with_previous": "${shouldMerge}" , "recording_complete": "${recording_complete}, "element_indices": "${actionInContext.elementIndices?.join(',')}"}`
+    const comment = ` // {"uuid": "${actionInContext.uuid}" , "merge_with_previous": "${shouldMerge}" , "recording_complete": "${recording_complete}", "element_indices": "${actionInContext.elementIndices?.join(',')}"}`
 
     if (action.name === 'completeRecording') {
       formatter.add(comment);
