@@ -1163,7 +1163,6 @@ export class Frame extends SdkObject {
         progress.log(log);
       if (!success) {
         result.dispose();
-        console.log('continuePolling in _retryWithProgressIfNotConnected : ', continuePolling);
         return continuePolling;
       }
       const element = await result.evaluateHandle(r => r.element) as dom.ElementHandle<Element>;
@@ -1172,7 +1171,6 @@ export class Frame extends SdkObject {
         const result = await action(element);
         if (result === 'error:notconnected') {
           progress.log('element was detached from the DOM, retrying');
-          console.log('result in _retryWithProgressIfNotConnected : ', result);
           return continuePolling;
         }
         if (return_bid)
@@ -1197,7 +1195,6 @@ export class Frame extends SdkObject {
       const result = await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._click(progress, { ...options, waitAfter: !options.noWaitAfter }), true);
       if (typeof result === 'object' && 'bid' in result) {
         dom.assertDone(result.result);
-        console.log('bid in click : ', result.bid);
         return result.bid;
       } else {
         dom.assertDone(result);

@@ -127,6 +127,7 @@ export async function highlightElement(
   if (!boundingBox) return;
 
   await page.evaluate(
+    // @ts-ignore
     ({ boundingBox, message, styles, handDrawnStyles }) => {
       // Add styles if not already present
       if (!document.getElementById("hand-drawn-styles")) {

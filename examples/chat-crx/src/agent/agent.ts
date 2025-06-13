@@ -207,8 +207,9 @@ export class Agent {
         await highlightElement(page, element, action_description);
 
         if (!manual_mode && !this.shouldStop) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
           await removeHighlight(page);
+          console.log("next_action_name ", next_action_name, next_action);
+          console.log("element ", element);
           switch (next_action_name) {
             case this.ClickElementAction:
               const click_action = next_action as ClickElementAction;

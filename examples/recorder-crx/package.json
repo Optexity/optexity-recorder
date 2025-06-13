@@ -1,6 +1,6 @@
 {
-  "name": "recorder-crx",
-  "version": "0.14.0",
+  "name": "optexity-recorder-crx",
+  "version": "0.1.0",
   "type": "module",
   "keywords": [],
   "author": "",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "idb-keyval": "^6.2.1",
-    "playwright-crx": "0.14.0",
+    "playwright-crx": "file:../../",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-modal-promise": "^1.0.2",
