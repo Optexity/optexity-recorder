@@ -309,7 +309,6 @@ export class ContextRecorder extends EventEmitter {
       uuid: _uuid,
       content: content,
       eval_page: eval_page,
-      // elementIndices: action.elementIndices,
     };
     await this._delegate.rewriteActionInContext?.(this._pageAliases, actionInContext);
     return actionInContext;

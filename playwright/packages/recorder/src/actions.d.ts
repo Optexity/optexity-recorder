@@ -170,5 +170,5 @@ export type ActionInContext = {
   shouldMerge?: boolean;
   content?: string;
   eval_page?: { [key: string]: any };
-  elementIndices?: string;
+  optexityBid?: string;
 };

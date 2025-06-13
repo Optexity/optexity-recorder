@@ -49,7 +49,7 @@ export async function performAction(pageAliases: Map<Page, string>, actionInCont
     const options = toClickOptions(action);
     const bid = await mainFrame.click(callMetadata, selector, { ...options, timeout: kActionTimeout, strict: true });
     if (bid) {
-      actionInContext.elementIndices = bid;
+      actionInContext.optexityBid = bid;
     }
     return;
   }
@@ -59,14 +59,14 @@ export async function performAction(pageAliases: Map<Page, string>, actionInCont
     const shortcut = [...modifiers, action.key].join('+');
     const bid = await mainFrame.press(callMetadata, selector, shortcut, { timeout: kActionTimeout, strict: true });
     if (bid)
-      actionInContext.elementIndices = bid;
+      actionInContext.optexityBid = bid;
     return;
   }
 
   if (action.name === 'fill') {
     const bid = await mainFrame.fill(callMetadata, selector, action.text, { timeout: kActionTimeout, strict: true });
     if (bid)
-      actionInContext.elementIndices = bid;
+      actionInContext.optexityBid = bid;
     return;
   }
 
@@ -78,14 +78,14 @@ export async function performAction(pageAliases: Map<Page, string>, actionInCont
   if (action.name === 'check') {
     const bid = await mainFrame.check(callMetadata, selector, { timeout: kActionTimeout, strict: true });
     if (bid)
-      actionInContext.elementIndices = bid;
+      actionInContext.optexityBid = bid;
     return;
   }
 
   if (action.name === 'uncheck') {
     const bid = await mainFrame.uncheck(callMetadata, selector, { timeout: kActionTimeout, strict: true });
     if (bid)
-      actionInContext.elementIndices = bid;
+      actionInContext.optexityBid = bid;
     return;
   }
 

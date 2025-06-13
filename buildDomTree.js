@@ -744,22 +744,14 @@ export function buildDomTree(args) {
    * One of the things we tried at the beginning was also to use event listeners, and other fancy class, style stuff -> what actually worked best was just combining most things with computed cursor style :)
    */
   function isInteractiveElement(element) {
-    if (debugMode) {
-      console.log("---------------------------------------");
-      console.log("isInteractiveElement");
-      console.log(element);
-    }
 
-    // console.log(element.parentElement);
     if (!element || element.nodeType !== Node.ELEMENT_NODE) {
-      if (debugMode) console.log("False1");
       return false;
     }
 
     // Cache the tagName and style lookups
     const tagName = element.tagName.toLowerCase();
     const style = getCachedComputedStyle(element);
-    if (debugMode) console.log("Cursor: ", style.cursor);
 
     // Define interactive cursors
     const interactiveCursors = new Set([
@@ -810,21 +802,17 @@ export function buildDomTree(args) {
 
     function doesElementHaveInteractivePointer(element) {
       if (element.tagName.toLowerCase() === "html") {
-        if (debugMode) console.log("False2");
         return false;
       }
 
       if (interactiveCursors.has(style.cursor)) {
-        if (debugMode) console.log("True1: ", style.cursor);
         return true;
       }
       cursor = hoverPointerEls.has(element) ? "pointer" : style.cursor;
       if (interactiveCursors.has(cursor)) {
-        if (debugMode) console.log("TrueMax: ", cursor);
         return true;
       }
 
-      if (debugMode) console.log("False3");
       return false;
     }
 
@@ -832,7 +820,6 @@ export function buildDomTree(args) {
 
     // Genius fix for almost all interactive elements
     if (isInteractiveCursor) {
-      if (debugMode) console.log("True2");
       return true;
     }
 
@@ -870,7 +857,6 @@ export function buildDomTree(args) {
     if (interactiveElements.has(tagName)) {
       // Check for non-interactive cursor
       if (nonInteractiveCursors.has(style.cursor)) {
-        if (debugMode) console.log("False4");
         return false;
       }
 
@@ -881,30 +867,25 @@ export function buildDomTree(args) {
           element.getAttribute(disableTag) === "true" ||
           element.getAttribute(disableTag) === ""
         ) {
-          if (debugMode) console.log("False5");
           return false;
         }
       }
 
       // Check for disabled property on form elements
       if (element.disabled) {
-        if (debugMode) console.log("False6");
         return false;
       }
 
       // Check for readonly property on form elements
       if (element.readOnly) {
-        if (debugMode) console.log("False7");
         return false;
       }
 
       // Check for inert property
       if (element.inert) {
-        if (debugMode) console.log("False8");
         return false;
       }
 
-      if (debugMode) console.log("True3");
       return true;
     }
 
@@ -916,7 +897,6 @@ export function buildDomTree(args) {
       element.getAttribute("contenteditable") === "true" ||
       element.isContentEditable
     ) {
-      if (debugMode) console.log("True4");
       return true;
     }
 
@@ -929,7 +909,6 @@ export function buildDomTree(args) {
         element.getAttribute("data-toggle") === "dropdown" ||
         element.getAttribute("aria-haspopup") === "true")
     ) {
-      if (debugMode) console.log("True5");
       return true;
     }
 
@@ -960,7 +939,6 @@ export function buildDomTree(args) {
       interactiveRoles.has(ariaRole);
 
     if (hasInteractiveRole) {
-      if (debugMode) console.log("True6");
       return true;
     }
 
@@ -971,7 +949,6 @@ export function buildDomTree(args) {
         const mouseEvents = ["click", "mousedown", "mouseup", "dblclick"];
         for (const eventType of mouseEvents) {
           if (listeners[eventType] && listeners[eventType].length > 0) {
-            if (debugMode) console.log("True7");
             return true; // Found a mouse interaction listener
           }
         }
@@ -984,7 +961,6 @@ export function buildDomTree(args) {
           "ondblclick",
         ];
         if (commonMouseAttrs.some((attr) => element.hasAttribute(attr))) {
-          if (debugMode) console.log("True8");
           return true;
         }
       }
@@ -993,7 +969,6 @@ export function buildDomTree(args) {
       // If checking listeners fails, rely on other checks
     }
 
-    if (debugMode) console.log("False9");
     return false;
   }
 
@@ -1396,7 +1371,6 @@ export function buildDomTree(args) {
       if (isElementDistinctInteraction(node)) {
         shouldHighlight = true;
       } else {
-        // console.log(`Skipping highlight for ${nodeData.tagName} (parent highlighted)`);
         shouldHighlight = false;
       }
     }
@@ -1421,7 +1395,6 @@ export function buildDomTree(args) {
           return true; // Successfully highlighted
         }
       } else {
-        // console.log(`Skipping highlight for ${nodeData.tagName} (outside viewport)`);
       }
     }
 
@@ -1545,7 +1518,6 @@ export function buildDomTree(args) {
             rect.right < -viewportExpansion ||
             rect.left > window.innerWidth + viewportExpansion))
       ) {
-        // console.log("Skipping node outside viewport (quick check):", node.tagName, rect);
         if (debugMode) PERF_METRICS.nodeMetrics.skippedNodes++;
         return null;
       }

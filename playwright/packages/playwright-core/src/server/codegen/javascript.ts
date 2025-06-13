@@ -49,7 +49,7 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
 
     const shouldMerge = actionInContext.shouldMerge ? actionInContext.shouldMerge : false;
     const recording_complete = action.name === 'completeRecording' ? true : false;
-    const comment = ` // {"uuid": "${actionInContext.uuid}" , "merge_with_previous": "${shouldMerge}" , "recording_complete": "${recording_complete}", "element_indices": "${actionInContext.elementIndices}"}`
+    const comment = ` // {"uuid": "${actionInContext.uuid}" , "merge_with_previous": "${shouldMerge}" , "recording_complete": "${recording_complete}", "optexity_bid": "${actionInContext.optexityBid}"}`
     if (action.name === 'completeRecording') {
       formatter.add(comment);
     } else {
