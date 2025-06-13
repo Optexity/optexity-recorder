@@ -179,6 +179,7 @@ export class ContextRecorder extends EventEmitter {
         focusHighlightIndex: -1,
         viewportExpansion: -1,
         debugMode: false,
+        denySvgElements: false,
       }
     );
     if (eval_page == null) {
