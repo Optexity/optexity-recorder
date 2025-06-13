@@ -1152,7 +1152,6 @@ export class Frame extends SdkObject {
         }
         try {
           const bid = element?.getAttribute('optexity-bid') || null;
-          console.log('bid in _retryWithProgressIfNotConnected : ', bid);
           return { log, success: !!element, element, bid };
         } catch (e) {
           console.log('error : ', e);
