@@ -205,6 +205,7 @@ export class Agent {
           action_description = `${prefix} ${await element.innerText()}`;
 
         await highlightElement(page, element, action_description);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         if (!manual_mode && !this.shouldStop) {
           await removeHighlight(page);
