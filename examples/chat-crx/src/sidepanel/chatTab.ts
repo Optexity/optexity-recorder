@@ -192,8 +192,9 @@ export class ChatApp {
   private cleanup(): void {
     this.step_number = 0;
     this.removeProcessingElement();
-    this.shouldStop = false;
+    this.shouldStop = true;
     this.isPaused = false;
+    this.userGoal = null;
     this.inputContainer.innerHTML = this.originalInputContent;
 
     if (this.messageInput.dataset.demoId) {
@@ -208,7 +209,7 @@ export class ChatApp {
   private async sendMessage(): Promise<void> {
     const message = this.messageInput.value.trim();
     if (!message) return;
-
+    this.shouldStop = false;
     this.addUserMessage(message);
     this.messageInput.value = "";
     this.addBotMessage(`Taking action for goal: ${message}`);
@@ -277,11 +278,11 @@ export class ChatApp {
 
     if (stopButton) {
       stopButton.addEventListener("click", () => {
-        this.cleanup();
         this.shouldStop = true;
         chrome.runtime.sendMessage({
           type: "STOP_PROCESSING",
         });
+        this.cleanup();
       });
     }
   }

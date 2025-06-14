@@ -184,9 +184,22 @@ export async function highlightElement(
       tooltip.textContent = message;
       tooltip.className = "highlight-overlay";
 
-      // Position tooltip above the element
-      tooltip.style.left = `${boundingBox.x}px`;
-      tooltip.style.top = `${boundingBox.y - 40}px`;
+      // Calculate if element is in top 20% of viewport
+      const viewportHeight = window.innerHeight;
+      const elementTopRelativeToViewport = boundingBox.y;
+      const isInTop20Percent = elementTopRelativeToViewport < viewportHeight * 0.2;
+
+      // Position tooltip based on element position
+      if (isInTop20Percent) {
+        // If element is in top 20%, position tooltip below
+        tooltip.style.left = `${boundingBox.x}px`;
+        tooltip.style.top = `${boundingBox.y + boundingBox.height + 20}px`;
+      } else {
+        // Otherwise position tooltip above the highlight circle
+        tooltip.style.left = `${boundingBox.x}px`;
+        tooltip.style.top = `${boundingBox.y - 80}px`; // 20px for highlight circle + 40px gap
+      }
+
       document.body.appendChild(tooltip);
     },
     { boundingBox, message, styles, handDrawnStyles }
