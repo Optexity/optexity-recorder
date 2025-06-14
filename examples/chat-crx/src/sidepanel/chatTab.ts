@@ -109,6 +109,7 @@ export class ChatApp {
     const params: Record<string, string> = {
       goal,
       step_number: step_number.toString(),
+      current_try: "0",
     };
     if (demoId !== null) {
       params.demonstration_id = demoId;
@@ -340,7 +341,7 @@ export class ChatApp {
         pauseButton.style.background = "#4a5568";
       }
     }
-    
+
     // Ensure button remains interactive
     pauseButton.style.cursor = "pointer";
     pauseButton.disabled = false;

@@ -12,7 +12,6 @@ export interface ClickElementAction {
   locators: Locator[];
   command: string | null;
   action_description: string | null;
-  optexity_bid: string | null;
 }
 
 export interface InputTextAction {
@@ -24,13 +23,11 @@ export interface InputTextAction {
   command: string | null;
   fill_value_name: string | null;
   action_description: string | null;
-  optexity_bid: string | null;
 }
 
 export interface DoneAction {
   text: string;
   success: boolean;
-  optexity_bid: string | null;
 }
 
 export interface NextStepResponse {
@@ -38,6 +35,7 @@ export interface NextStepResponse {
   demonstration_goal: string;
   next_action: ClickElementAction | InputTextAction | DoneAction;
   next_action_name: "ClickElementAction" | "InputTextAction" | "DoneAction";
+  can_continue: boolean;
 }
 
 export interface Demonstration {

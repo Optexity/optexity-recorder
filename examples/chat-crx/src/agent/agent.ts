@@ -146,18 +146,22 @@ export class Agent {
   }
 
   async takeActionIndex(page: Page, next_step_response: NextStepResponse) {
-    if (this.dom_state == null) return;
+    let autonomous_mode_ask_user_to_fill = false;
+    if (this.dom_state == null) return autonomous_mode_ask_user_to_fill;
     const next_action_name = next_step_response.next_action_name;
     if (next_action_name == this.ClickElementAction) {
       const next_action = next_step_response.next_action as ClickElementAction;
 
       await clickElement(page, this.dom_state, next_action);
     } else if (next_action_name == this.InputTextAction) {
-      const next_action = next_step_response.next_action as InputTextAction;
-      await inputElement(page, this.dom_state, next_action);
+      const input_action = next_step_response.next_action as InputTextAction;
+      if (input_action.text == null || input_action.text.trim() == "")
+        autonomous_mode_ask_user_to_fill = true;
+      else await inputElement(page, this.dom_state, input_action);
     } else {
       throw new Error(`Unknown action name: ${next_action_name}`);
     }
+    return autonomous_mode_ask_user_to_fill;
   }
 
   async takeAction(
@@ -181,9 +185,19 @@ export class Agent {
         | ClickElementAction
         | InputTextAction;
 
+      let autonomous_mode_ask_user_to_fill = false;
       if (next_action.index != null && next_action.index >= 0) {
-        await this.takeActionIndex(page, next_step_response);
-        return { success: true, done: false, ask_user_to_take_action: false };
+        // TODO: add highlight here
+        autonomous_mode_ask_user_to_fill = await this.takeActionIndex(
+          page,
+          next_step_response
+        );
+        return {
+          success: true,
+          done: false,
+          ask_user_to_take_action: false,
+          autonomous_mode_ask_user_to_fill: autonomous_mode_ask_user_to_fill,
+        };
       }
 
       if (next_action.locators == null || next_action.locators.length == 0)
@@ -192,8 +206,6 @@ export class Agent {
       const { element, is_locator_fixed } = this.get_element(next_action, page);
       if (element == null)
         return { success: false, done: false, ask_user_to_take_action: false };
-
-      let autonomous_mode_ask_user_to_fill = false;
 
       if (is_locator_fixed || is_replay) {
         const prefix =
