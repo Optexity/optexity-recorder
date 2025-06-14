@@ -1,4 +1,4 @@
-import { Locator, Page } from "playwright-crx";
+import { ElementHandle, Locator, Page } from "playwright-crx";
 
 // Styles for highlights
 const styles = {
@@ -118,7 +118,7 @@ export async function highlightDone(page: Page) {
 // Highlight an element with a circle and tooltip
 export async function highlightElement(
   page: Page,
-  element: Locator,
+  element: Locator | ElementHandle,
   message: string
 ) {
   await removeHighlight(page);

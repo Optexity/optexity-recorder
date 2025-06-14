@@ -4,6 +4,7 @@ import {
 } from "../../schemas/demonstration";
 import { DOMElementNode, DOMState } from "../dom/views";
 import { ElementHandle, FrameLocator, Page } from "playwright-crx";
+import { highlightElement } from "../../highlight";
 
 async function locateElement(
   page: Page,
@@ -61,9 +62,10 @@ async function clickElementNode(
   // }
 
   const element = await locateElement(page, elementNode);
-  if (!element) {
-    throw new Error(`Element: ${elementNode} not found`);
-  }
+  if (element == null) return;
+
+  await highlightElement(page, element, "Clicking on");
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   // // Scroll element into view if needed
   // await this._scrollIntoViewIfNeeded(element);
@@ -183,9 +185,10 @@ async function inputTextElementNode(
     // }
 
     const element = await locateElement(page, elementNode);
-    if (!element) {
-      throw new Error(`Element: ${elementNode} not found`);
-    }
+    if (element == null) return;
+
+    await highlightElement(page, element, "Typing on");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     await element.fill(text, { timeout: 1500 });
 
