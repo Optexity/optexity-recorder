@@ -104,12 +104,13 @@ export class ChatApp {
     eval_page: Record<string, any> | null,
     url: string | null,
     page_title: string | null,
-    demoId: string | null
+    demoId: string | null,
+    try_number: number
   ): Promise<NextStepResponse> {
     const params: Record<string, string> = {
       goal,
       step_number: step_number.toString(),
-      current_try: "0",
+      current_try: try_number.toString(),
     };
     if (demoId !== null) {
       params.demonstration_id = demoId;
@@ -135,7 +136,11 @@ export class ChatApp {
     return await response.json();
   }
 
-  private async takeAction(goal: string, demoId: string | null) {
+  private async takeAction(
+    goal: string,
+    demoId: string | null,
+    try_number: number
+  ) {
     const { eval_page, url, page_title } = await this.getEvalPage();
     const next_step_response = await this.getNextStepResponse(
       goal,
@@ -143,7 +148,8 @@ export class ChatApp {
       eval_page,
       url,
       page_title,
-      demoId
+      demoId,
+      try_number
     );
     const response = await chrome.runtime.sendMessage({
       type: "TAKE_ACTION",
@@ -153,7 +159,7 @@ export class ChatApp {
       is_replay: demoId !== null,
     });
     this.step_number++;
-    return response;
+    return { response, can_continue: next_step_response.can_continue };
   }
 
   private async takeActions() {
@@ -163,18 +169,30 @@ export class ChatApp {
     const demoId = this.messageInput.dataset.demoId || null;
     try {
       while (!this.shouldStop && !this.isPaused) {
-        const response = await this.takeAction(goal, demoId);
+        let outside_response: any = null;
+        for (const try_number of [0, 1, 2]) {
+          const { response, can_continue } = await this.takeAction(
+            goal,
+            demoId,
+            try_number
+          );
+          outside_response = response;
+          if (response.success || response.done || !can_continue) break;
+        }
 
-        if (response.done || !response.success) {
-          if (!response.success) {
-            console.warn("Playwright action failed:", response.error);
+        if (outside_response.done || !outside_response.success) {
+          if (!outside_response.success) {
+            console.warn("Playwright action failed:", outside_response.error);
           }
           break;
         }
 
-        if (this.isManualMode || response.autonomous_mode_ask_user_to_fill)
+        if (
+          this.isManualMode ||
+          outside_response.autonomous_mode_ask_user_to_fill
+        )
           await this.onPauseButtonClick();
-        if (response.autonomous_mode_ask_user_to_fill) {
+        if (outside_response.autonomous_mode_ask_user_to_fill) {
           this.addBotMessage(
             "Fill the field which is highlighted in the page and then resume the process."
           );
