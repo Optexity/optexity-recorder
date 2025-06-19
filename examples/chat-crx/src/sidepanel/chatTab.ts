@@ -171,6 +171,7 @@ export class ChatApp {
       while (!this.shouldStop && !this.isPaused) {
         let outside_response: any = null;
         for (const try_number of [0, 1, 2]) {
+          console.log("taking action with try_number: ", try_number, " step_number: ", this.step_number);
           const { response, can_continue } = await this.takeAction(
             goal,
             demoId,

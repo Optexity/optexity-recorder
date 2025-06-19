@@ -187,6 +187,8 @@ export class Agent {
 
       let autonomous_mode_ask_user_to_fill = false;
       if (next_action.index != null && next_action.index >= 0) {
+        console.log(" using index --------------------------------");
+        console.log("next_action_name ", next_action_name, "\nnext_action", next_action);
         // TODO: add highlight here
         autonomous_mode_ask_user_to_fill = await this.takeActionIndex(
           page,
@@ -221,22 +223,22 @@ export class Agent {
 
         if (!manual_mode && !this.shouldStop) {
           await removeHighlight(page);
-          console.log("next_action_name ", next_action_name, next_action);
-          console.log("element ", element);
+          console.log(" using locator --------------------------------");
+          console.log("next_action_name ", next_action_name, "\nnext_action", next_action, "\nelement", element);
           switch (next_action_name) {
             case this.ClickElementAction:
               const click_action = next_action as ClickElementAction;
               if (click_action.double_click) {
-                await element.dblclick();
+                await element.dblclick({ timeout: 3000 });
               } else {
-                await element.click();
+                await element.click({ timeout: 3000 });
               }
               break;
             case this.InputTextAction:
               const input_action = next_action as InputTextAction;
               if (input_action.text == null || input_action.text.trim() == "")
                 autonomous_mode_ask_user_to_fill = true;
-              else await element.fill(input_action.text.trim());
+              else await element.fill(input_action.text.trim(), { timeout: 3000 });
 
               break;
           }
