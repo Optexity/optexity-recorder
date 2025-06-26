@@ -85,16 +85,6 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         formatter.add(`const download${signals.download.downloadAlias} = await download${signals.download.downloadAlias}Promise;`);
       code = code + comment;
       formatter.add(code);
-      try{
-        chrome.runtime.sendMessage({
-          type: 'OPTEXITY_EVAL_PAGE',
-          eval_page: actionInContext.eval_page,
-          content: actionInContext.content,
-            file_id: actionInContext.uuid,
-          });
-      } catch (error) {
-        console.log('error in generateAction javascript : ', error);
-      }
       // if (actionInContext.uuid && actionInContext.action.name) {
       //   console.log('Inside generateAction python: ' + actionInContext.action.name + ' ' + actionInContext.uuid);
       // }
