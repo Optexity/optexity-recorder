@@ -91,7 +91,9 @@ export async function performAction(pageAliases: Map<Page, string>, actionInCont
 
   if (action.name === 'select') {
     const values = action.options.map(value => ({ value }));
-    await mainFrame.selectOption(callMetadata, selector, [], values, { timeout: kActionTimeout, strict: true });
+    const bid = await mainFrame.selectOption(callMetadata, selector, [], values, { timeout: kActionTimeout, strict: true });
+    if (bid)
+      actionInContext.optexityBid = bid;
     return;
   }
 

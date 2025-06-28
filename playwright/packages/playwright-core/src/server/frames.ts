@@ -44,6 +44,7 @@ import type { ScreenshotOptions } from './screenshotter';
 import type { RegisteredListener } from './utils/eventsHelper';
 import type { ParsedSelector } from '../utils/isomorphic/selectorParser';
 import type * as channels from '@protocol/channels';
+import { metadataToCallLog } from './recorder/recorderUtils';
 
 type ContextData = {
   contextPromise: ManualPromise<dom.FrameExecutionContext | { destroyedReason: string }>;
@@ -1392,10 +1393,17 @@ export class Frame extends SdkObject {
     }, this._page._timeoutSettings.timeout(options));
   }
 
-  async selectOption(metadata: CallMetadata, selector: string, elements: dom.ElementHandle[], values: types.SelectOption[], options: types.CommonActionOptions = {}): Promise<string[]> {
+  async selectOption(metadata: CallMetadata, selector: string, elements: dom.ElementHandle[], values: types.SelectOption[], options: types.CommonActionOptions = {}) {
     const controller = new ProgressController(metadata, this);
     return controller.run(async progress => {
-      return await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._selectOption(progress, elements, values, options));
+      const result = await this._retryWithProgressIfNotConnected(progress, selector, options.strict, !options.force /* performActionPreChecks */, handle => handle._selectOption(progress, elements, values, options), true);
+      if (typeof result === 'object' && 'bid' in result) {
+        // dom.assertDone(result.result[0]);
+        return result.bid;
+      } else {
+        // dom.assertDone(result[0]);
+        return null;
+      }
     }, this._page._timeoutSettings.timeout(options));
   }
 
