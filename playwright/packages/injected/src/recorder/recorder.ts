@@ -382,7 +382,7 @@ class RecordActionTool implements RecorderTool {
     }
 
     if (isRangeInput(target)) {
-      this._performAction({
+      this._recorder.recordAction({
         name: 'fill',
         // must use hoveredModel instead of activeModel for it to work in webkit
         selector: this._hoveredModel!.selector,
@@ -399,16 +399,15 @@ class RecordActionTool implements RecorderTool {
       }
 
       // Non-navigating actions are simply recorded by Playwright.
-      // if (this._actionInProgress(event))
-      //   return;
-      this._performAction({
+      if (this._consumedDueWrongTarget(event))
+        return;
+      // TODO: If you want to capture optexity bid then this._performAction({ instead of this._recorder.recordAction({
+      this._recorder.recordAction({
         name: 'fill',
         selector: this._activeModel!.selector,
         signals: [],
         text: target.isContentEditable ? target.innerText : (target as HTMLInputElement).value,
       });
-      if (this._consumedDueWrongTarget(event))
-        return;
     }
 
     if (target.nodeName === 'SELECT') {
