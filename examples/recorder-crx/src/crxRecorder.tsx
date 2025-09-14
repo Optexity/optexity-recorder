@@ -185,7 +185,7 @@ export const CrxRecorder: React.FC = ({
 
     (async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/v1/save_demo', {
+        const response = await fetch('https://nanonets-orthosouth-api.optexity.com/api/v1/save_demo', {
           method: 'POST',
           body: formData,
           headers: {
