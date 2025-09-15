@@ -27,7 +27,7 @@ export const TaskDescription: React.FC<TaskDescriptionProps> = ({ onStartCapturi
       <div className='logo'>
         <img src='Optexity_logo_small_black.svg' alt='Optexity Logo' width='64' height='64' />
       </div>
-      <h3 className='greeting'>Hello, Shivam!</h3>
+      <h3 className='greeting'>Hello, Optexity!</h3>
       <button
         className='start-capturing-button-landing'
         onClick={() => onStartCapturing('')}
