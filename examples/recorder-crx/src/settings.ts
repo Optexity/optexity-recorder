@@ -23,7 +23,7 @@ export type CrxSettings = {
 
 export const defaultSettings = {
   testIdAttributeName: 'data-testid',
-  targetLanguage: 'javascript',
+  targetLanguage: 'python',
   sidepanel: true,
   experimental: true,
   playInIncognito: false,
@@ -34,6 +34,7 @@ export async function loadSettings(): Promise<CrxSettings> {
     chrome.extension.isAllowedIncognitoAccess(),
     chrome.storage.sync.get(['testIdAttributeName', 'targetLanguage', 'sidepanel', 'playInIncognito', 'experimental']) as Partial<CrxSettings>,
   ]);
+  loadedPreferences.targetLanguage = defaultSettings.targetLanguage;
   return { ...defaultSettings, ...loadedPreferences, playInIncognito: !!loadedPreferences.playInIncognito && isAllowedIncognitoAccess };
 }
 

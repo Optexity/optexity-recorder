@@ -141,4 +141,23 @@ html, body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.logout-button-landing {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #666;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.logout-button-landing:hover {
+  background: #f5f5f5;
+  border-color: #bbb;
+  color: #333;
 } 

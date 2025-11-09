@@ -19,9 +19,10 @@ import './taskDescription.css';
 
 interface TaskDescriptionProps {
   onStartCapturing: (taskDescription: string) => void;
+  onLogout: () => void;
 }
 
-export const TaskDescription: React.FC<TaskDescriptionProps> = ({ onStartCapturing }) => {
+export const TaskDescription: React.FC<TaskDescriptionProps> = ({ onStartCapturing, onLogout }) => {
   return (
     <div className='landing-container'>
       <div className='logo'>
@@ -34,6 +35,12 @@ export const TaskDescription: React.FC<TaskDescriptionProps> = ({ onStartCapturi
       >
         <span className='capture-icon' />
         Start Capture
+      </button>
+      <button
+        className='logout-button-landing'
+        onClick={onLogout}
+      >
+        Logout
       </button>
     </div>
   );

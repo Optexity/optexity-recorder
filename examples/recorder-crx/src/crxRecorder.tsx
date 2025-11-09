@@ -23,6 +23,8 @@ import ModalContainer from 'react-modal-promise';
 import './crxRecorder.css';
 import './form.css';
 import { TaskDescription } from './taskDescription';
+import { APIKeyInputScreen } from './apiKeyInputScreen';
+import './apiKeyInputScreen.css';
 
 // Global Maps to store eval pages and contents
 const globalEvalPages = new Map<string, { [key: string]: any }>();
@@ -71,10 +73,19 @@ export const CrxRecorder: React.FC = ({
   const [mode, setMode] = React.useState<Mode>('none');
   const [selectedFileId, setSelectedFileId] = React.useState<string>(defaultSettings.targetLanguage);
   const [showRecorder, setShowRecorder] = React.useState(false);
+  const [showWelcomeScreen, setShowWelcomeScreen] = React.useState(false);
   const [showSavedOverlay, setShowSavedOverlay] = React.useState(false);
   const [recorderKey, setRecorderKey] = React.useState(0);
+  const [apiKey, setApiKey] = React.useState('');
 
   React.useEffect(() => {
+    // Check localStorage for API key on mount
+    const storedApiKey = localStorage.getItem('optexity_api_key');
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+      setShowWelcomeScreen(true);
+    }
+
     const port = chrome.runtime.connect({ name: 'recorder' });
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.type === 'OPTEXITY_EVAL_PAGE') {
@@ -170,7 +181,7 @@ export const CrxRecorder: React.FC = ({
     console.log('allEvalPages : ', Array.from(globalEvalPages.keys()));
     console.log('allContents : ', Array.from(globalContents.keys()));
     formData.append('files', codeFile);
-
+    formData.append('api_key', apiKey);
     for (const fileId of globalEvalPages.keys()) {
       const evalPage = globalEvalPages.get(fileId);
       const content = globalContents.get(fileId);
@@ -185,7 +196,7 @@ export const CrxRecorder: React.FC = ({
 
     (async () => {
       try {
-        const response = await fetch('https://nanonets-orthosouth-api.optexity.com/api/v1/save_demo', {
+        const response = await fetch('http://localhost:8000/api/v1/save_demo', {
           method: 'POST',
           body: formData,
           headers: {
@@ -213,7 +224,7 @@ export const CrxRecorder: React.FC = ({
 
     const filename = codegenFilenames[selectedFileId];
     download(filename, code);
-  }, [settings, source, selectedFileId]);
+  }, [settings, source, selectedFileId, apiKey]);
 
   React.useEffect(() => {
     if (!settings.experimental)
@@ -260,8 +271,17 @@ export const CrxRecorder: React.FC = ({
     window.close();
   }, []);
 
-  if (!showRecorder)
-    return <TaskDescription onStartCapturing={handleStartCapturing} />;
+  const handleLogout = React.useCallback(() => {
+    localStorage.removeItem('optexity_api_key');
+    setApiKey('');
+    setShowWelcomeScreen(false);
+  }, []);
+
+  if (!showWelcomeScreen)
+    return <APIKeyInputScreen onStartCapturing={key => { setApiKey(key); localStorage.setItem('optexity_api_key', key); setShowWelcomeScreen(true); }} />;
+
+  if (!showRecorder && showWelcomeScreen)
+    return <TaskDescription onStartCapturing={handleStartCapturing} onLogout={handleLogout} />;
 
   return <>
     <ModalContainer />
