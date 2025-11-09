@@ -130,10 +130,17 @@ export const Recorder: React.FC<RecorderProps> = ({
     let index = 1;
     const cards: { index: number, message: string }[] = [];
     for (const line of lines) {
-      if (line.includes('click')) {
+      if (line.includes('.click(')) {
         cards.push({ index: index++, message: 'Click this field.' });
-      } else if (line.includes('fill') && !line.includes('"merge_with_previous": "true"')) {
-        cards.push({ index: index++, message: 'type text' });
+      }
+      else if (line.includes('.dblclick(')) {
+        cards.push({ index: index++, message: 'Double click this field.' });
+      }
+      else if (line.includes('.fill(') && !line.includes('"merge_with_previous": "true"')) {
+        cards.push({ index: index++, message: 'Type text.' });
+      }
+      else if (line.includes('.select_option(')) {
+        cards.push({ index: index++, message: 'Select this option.' });
       }
     }
     return cards;
