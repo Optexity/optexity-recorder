@@ -28,7 +28,7 @@ import './apiKeyInputScreen.css';
 
 // Global Maps to store eval pages and contents
 const globalEvalPages = new Map<string, { [key: string]: any }>();
-const globalContents = new Map<string, string>();
+// const globalContents = new Map<string, string>();
 
 function setElementPicked(elementInfo: ElementInfo, userGesture?: boolean) {
   window.playwrightElementPicked(elementInfo, userGesture);
@@ -92,7 +92,7 @@ export const CrxRecorder: React.FC = ({
         (async () => {
           if (message.eval_page) {
             globalEvalPages.set(message.file_id, message.eval_page);
-            globalContents.set(message.file_id, message.content);
+            // globalContents.set(message.file_id, message.content);
             sendResponse({ success: true });
           } else {
             console.log('message.eval_page is null');
@@ -172,30 +172,25 @@ export const CrxRecorder: React.FC = ({
     if (!code)
       return;
 
-    const url = code?.match(/await page\.goto\('([^']+)'\)/)?.[1] || '';
-
-    const formData = new FormData();
-    const codeFile = new File([code], 'generated_code.js', { type: 'text/plain' });
     console.log('making api call : ');
-    console.log('codeFile : ', codeFile.name);
-    console.log('allEvalPages : ', Array.from(globalEvalPages.keys()));
-    console.log('allContents : ', Array.from(globalContents.keys()));
-    formData.append('files', codeFile);
-    formData.append('api_key', apiKey);
-    for (const fileId of globalEvalPages.keys()) {
-      const evalPage = globalEvalPages.get(fileId);
-      const content = globalContents.get(fileId);
-      if (evalPage && content) {
-        const evalFile = new File([JSON.stringify(evalPage)], `${fileId}_eval_page.json`, { type: 'application/json' });
-        const contentFile = new File([content], `${fileId}_content.txt`, { type: 'text/plain' });
-        formData.append('files', evalFile);
-        formData.append('files', contentFile);
-      }
-    }
-    formData.append('url', url);
+    const evalPagesData = Object.fromEntries(Array.from(globalEvalPages.entries()));
 
+    // Create compressed payload for eval_pages
+    const payload = { eval_pages: evalPagesData };
+    const jsonString = JSON.stringify(payload);
+
+    // Don't await - let it run in background
     (async () => {
       try {
+        const stream = new Blob([jsonString]).stream();
+        const compressedStream = stream.pipeThrough(new CompressionStream('gzip'));
+        const compressedBlob = await new Response(compressedStream).blob();
+        console.log(`Compressed size: ${compressedBlob.size} bytes`);
+        const formData = new FormData();
+        formData.append('code_file', new File([code], 'generated_code.py', { type: 'text/plain' }));
+        formData.append('compressed_data', compressedBlob, 'eval_pages.json.gz');
+        formData.append('api_key', apiKey);
+
         const response = await fetch('http://localhost:8000/api/v1/save_demo', {
           method: 'POST',
           body: formData,
@@ -203,22 +198,18 @@ export const CrxRecorder: React.FC = ({
             'Authorization': 'Bearer test',
           },
         });
+
         await response.json();
       } catch (error) {
         console.error('Fetch error:', error);
       } finally {
         globalEvalPages.clear();
-        globalContents.clear();
-        // Clear state
         setSources([]);
         setPaused(false);
         setLog(new Map<string, CallLog>());
         setMode('none');
         setSelectedFileId(defaultSettings.targetLanguage);
         setRecorderKey(prev => prev + 1);
-        // Open optexity.com in new tab and close extension
-        // window.open('https://optexity.com', '_blank');
-        // window.close();
       }
     })();
 
@@ -258,7 +249,7 @@ export const CrxRecorder: React.FC = ({
 
   const handleDelete = React.useCallback(() => {
     globalEvalPages.clear();
-    globalContents.clear();
+    // globalContents.clear();
     // Clear all state first
     setSources([]);
     setPaused(false);

@@ -27,16 +27,6 @@ export function generateCode(actions: actions.ActionInContext[], languageGenerat
   const footer = languageGenerator.generateFooter(options.saveStorage);
   const actionTexts = actions.map(a => languageGenerator.generateAction(a)).filter(Boolean);
   const text = [header, ...actionTexts, footer].join('\n');
-  try{
-    chrome.runtime.sendMessage({
-      type: 'OPTEXITY_EVAL_PAGE',
-      eval_page: actions[actions.length - 1].eval_page,
-      content: actions[actions.length - 1].content,
-        file_id: actions[actions.length - 1].uuid,
-      });
-  } catch (error) {
-    console.log('error in generateCode : ', error);
-  }
   return { header, footer, actionTexts, text };
 }
 

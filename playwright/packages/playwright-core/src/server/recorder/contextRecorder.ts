@@ -109,6 +109,16 @@ export class ContextRecorder extends EventEmitter {
         if (languageGenerator === this._orderedLanguages[0])
           this._throttledOutputFile?.setContent(source.text);
       }
+      try{
+        chrome.runtime.sendMessage({
+          type: 'OPTEXITY_EVAL_PAGE',
+          eval_page: actions[actions.length - 1].eval_page,
+          // content: actions[actions.length - 1].content,
+            file_id: actions[actions.length - 1].uuid,
+          });
+      } catch (error) {
+        console.log('error in generateCode : ', error);
+      }
       this.emit(ContextRecorder.Events.Change, {
         sources: this._recorderSources,
         actions
