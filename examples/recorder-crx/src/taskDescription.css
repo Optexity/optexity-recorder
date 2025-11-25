@@ -160,4 +160,59 @@ html, body {
   background: #f5f5f5;
   border-color: #bbb;
   color: #333;
+}
+
+.logout-button-landing:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.start-capturing-button-landing:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.countdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.countdown-number {
+  font-size: 120px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  animation: scalePulse 0.5s ease-out;
+}
+
+@keyframes scalePulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 } 

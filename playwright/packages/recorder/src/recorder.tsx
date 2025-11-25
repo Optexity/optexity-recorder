@@ -43,34 +43,184 @@ export interface RecorderProps {
   onDelete?: () => any,
 }
 
-const ActionCard: React.FC<{ index: number, message: string }> = ({ index, message }) => (
-  <div style={{
-    display: 'flex',
-    alignItems: 'center',
-    background: '#fff',
-    borderRadius: 12,
-    boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-    padding: '10px 16px',
-    margin: '8px 0',
-    width: '100%',
-    boxSizing: 'border-box',
-  }}>
+// Python syntax highlighter
+const highlightPython = (code: string): React.ReactNode[] => {
+  const pythonKeywords = ['await', 'async', 'def', 'class', 'if', 'else', 'elif', 'for', 'while', 'try', 'except', 'finally', 'with', 'import', 'from', 'as', 'return', 'yield', 'pass', 'break', 'continue', 'True', 'False', 'None', 'and', 'or', 'not', 'in', 'is', 'lambda'];
+  const parts: React.ReactNode[] = [];
+  
+  // First, handle comments (they should be processed separately)
+  const commentRegex = /#.*$/gm;
+  const commentMatches: Array<{ start: number, end: number, text: string }> = [];
+  let match;
+  while ((match = commentRegex.exec(code)) !== null) {
+    commentMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0] });
+  }
+  
+  // Process the code
+  const tokens: Array<{ start: number, end: number, type: string, text: string, color: string }> = [];
+  
+  // Add comment tokens
+  commentMatches.forEach(comment => {
+    tokens.push({ ...comment, type: 'comment', color: '#6a737d' });
+  });
+  
+  // Add string tokens
+  const stringRegex = /(['"])(?:(?=(\\?))\2.)*?\1/g;
+  while ((match = stringRegex.exec(code)) !== null) {
+    if (!commentMatches.some(c => match!.index >= c.start && match!.index < c.end)) {
+      tokens.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'string', color: '#032f62' });
+    }
+  }
+  
+  // Add number tokens
+  const numberRegex = /\b\d+\.?\d*\b/g;
+  while ((match = numberRegex.exec(code)) !== null) {
+    if (!commentMatches.some(c => match!.index >= c.start && match!.index < c.end) &&
+        !tokens.some(t => match!.index >= t.start && match!.index < t.end)) {
+      tokens.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'number', color: '#005cc5' });
+    }
+  }
+  
+  // Add function call tokens
+  const functionRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+  while ((match = functionRegex.exec(code)) !== null) {
+    if (!commentMatches.some(c => match!.index >= c.start && match!.index < c.end) &&
+        !tokens.some(t => match!.index >= t.start && match!.index < t.end)) {
+      tokens.push({ start: match.index, end: match.index + match[1].length, text: match[1], type: 'function', color: '#6f42c1' });
+    }
+  }
+  
+  // Add keyword tokens
+  pythonKeywords.forEach(keyword => {
+    const keywordRegex = new RegExp(`\\b${keyword}\\b`, 'g');
+    while ((match = keywordRegex.exec(code)) !== null) {
+      if (!commentMatches.some(c => match!.index >= c.start && match!.index < c.end) &&
+          !tokens.some(t => match!.index >= t.start && match!.index < t.end)) {
+        tokens.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'keyword', color: '#d73a49' });
+      }
+    }
+  });
+  
+  // Sort tokens by position
+  tokens.sort((a, b) => a.start - b.start);
+  
+  // Build React elements
+  let currentIndex = 0;
+  tokens.forEach(token => {
+    // Add text before token
+    if (token.start > currentIndex) {
+      const text = code.substring(currentIndex, token.start);
+      if (text) {
+        parts.push(<span key={`text-${currentIndex}`}>{text}</span>);
+      }
+    }
+    
+    // Add highlighted token
+    parts.push(
+      <span key={`token-${token.start}`} style={{ color: token.color, fontWeight: token.type === 'keyword' ? 600 : 'normal' }}>
+        {token.text}
+      </span>
+    );
+    
+    currentIndex = token.end;
+  });
+  
+  // Add remaining text
+  if (currentIndex < code.length) {
+    const text = code.substring(currentIndex);
+    if (text) {
+      parts.push(<span key={`text-${currentIndex}`}>{text}</span>);
+    }
+  }
+  
+  return parts.length > 0 ? parts : [<span key="code">{code}</span>];
+};
+
+const ActionCard: React.FC<{ index: number, message: string, code: string }> = ({ index, message, code }) => {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const highlightedCode = React.useMemo(() => highlightPython(code), [code]);
+
+  return (
     <div style={{
-      width: 28,
-      height: 28,
-      borderRadius: '50%',
-      background: '#eef0ff',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: '#5b6dfa',
-      fontWeight: 700,
-      fontSize: 15,
-      marginRight: 12,
-    }}>{index}</div>
-    <div style={{ fontSize: 15, color: '#23272f', wordBreak: 'break-word' }}>{message}</div>
-  </div>
-);
+      background: '#fff',
+      borderRadius: 12,
+      boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      margin: '8px 0',
+      width: '100%',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+      transition: 'all 0.2s ease',
+    }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          padding: '10px 16px',
+          cursor: 'pointer',
+        }}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div style={{
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          background: '#eef0ff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#5b6dfa',
+          fontWeight: 700,
+          fontSize: 15,
+          marginRight: 12,
+          flexShrink: 0,
+        }}>{index}</div>
+        <div style={{ 
+          fontSize: 15, 
+          color: '#23272f', 
+          wordBreak: 'break-word',
+          flex: 1,
+        }}>{message}</div>
+        <div style={{
+          marginLeft: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#9ca3af',
+          transition: 'transform 0.2s ease',
+          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+          flexShrink: 0,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </div>
+      {isExpanded && (
+        <div style={{
+          padding: '0 16px 12px 16px',
+          borderTop: '1px solid #f3f4f6',
+          marginTop: '8px',
+          paddingTop: '12px',
+        }}>
+          <div style={{
+            fontSize: 13,
+            fontFamily: 'monospace',
+            background: '#f9fafb',
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid #e5e7eb',
+            wordBreak: 'break-all',
+            whiteSpace: 'pre-wrap',
+            overflowX: 'auto',
+            lineHeight: '1.6',
+          }}>
+            {highlightedCode}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Recorder: React.FC<RecorderProps> = ({
   sources,
@@ -128,19 +278,19 @@ export const Recorder: React.FC<RecorderProps> = ({
   const actionCards = React.useMemo(() => {
     const lines = source.text.split('\n');
     let index = 1;
-    const cards: { index: number, message: string }[] = [];
-    for (const line of lines) {
+    const cards: { index: number, message: string, code: string }[] = [];
+    for (const [i, line] of lines.entries()) {
       if (line.includes('.click(')) {
-        cards.push({ index: index++, message: 'Click this field.' });
+        cards.push({ index: index++, message: 'Click element action', code: line.split('# {"uuid":')[0].trim() });
       }
       else if (line.includes('.dblclick(')) {
-        cards.push({ index: index++, message: 'Double click this field.' });
+        cards.push({ index: index++, message: 'Double click element action', code: line.split('# {"uuid":')[0].trim() });
       }
-      else if (line.includes('.fill(') && !line.includes('"merge_with_previous": "true"')) {
-        cards.push({ index: index++, message: 'Type text.' });
+      else if (line.includes('.fill(') && (i == (lines.length - 1) || (!line.includes('"merge_with_previous": "true"') && !lines[i+1].includes('"merge_with_previous": "true"')) || (line.includes('"merge_with_previous": "true"') && !lines[i+1].includes('"merge_with_previous": "true"')))) {
+        cards.push({ index: index++, message: 'Type text action', code: line.split('# {"uuid":')[0].trim() });
       }
       else if (line.includes('.select_option(')) {
-        cards.push({ index: index++, message: 'Select this option.' });
+        cards.push({ index: index++, message: 'Select option action', code: line.split('# {"uuid":')[0].trim() });
       }
     }
     return cards;
@@ -265,7 +415,7 @@ export const Recorder: React.FC<RecorderProps> = ({
     >
       <div ref={messagesEndRef} />
       {actionCards.reverse().map(card => (
-        <ActionCard key={card.index} index={card.index} message={card.message} />
+        <ActionCard key={card.index} index={card.index} message={card.message} code={card.code} />
       ))}
     </div>
     <div style={{

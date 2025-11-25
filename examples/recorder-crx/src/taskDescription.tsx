@@ -23,15 +23,43 @@ interface TaskDescriptionProps {
 }
 
 export const TaskDescription: React.FC<TaskDescriptionProps> = ({ onStartCapturing, onLogout }) => {
+  const [countdown, setCountdown] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (countdown === null)
+      return;
+
+    if (countdown === 0) {
+      onStartCapturing('');
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [countdown, onStartCapturing]);
+
+  const handleStartCapture = () => {
+    setCountdown(5);
+  };
+
   return (
     <div className='landing-container'>
+      {countdown !== null && (
+        <div className='countdown-overlay'>
+          <div className='countdown-number'>{countdown}</div>
+        </div>
+      )}
       <div className='logo'>
         <img src='Optexity_logo_small_black.svg' alt='Optexity Logo' width='64' height='64' />
       </div>
       <h3 className='greeting'>Hello, Optexity!</h3>
       <button
         className='start-capturing-button-landing'
-        onClick={() => onStartCapturing('')}
+        onClick={handleStartCapture}
+        disabled={countdown !== null}
       >
         <span className='capture-icon' />
         Start Capture
@@ -39,6 +67,7 @@ export const TaskDescription: React.FC<TaskDescriptionProps> = ({ onStartCapturi
       <button
         className='logout-button-landing'
         onClick={onLogout}
+        disabled={countdown !== null}
       >
         Logout
       </button>
