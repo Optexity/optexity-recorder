@@ -206,6 +206,7 @@ const ActionCard: React.FC<{ index: number, message: string, code: string }> = (
             fontSize: 13,
             fontFamily: 'monospace',
             background: '#f9fafb',
+            color: '#24292e',
             padding: '10px 12px',
             borderRadius: 8,
             border: '1px solid #e5e7eb',
@@ -437,7 +438,7 @@ export const Recorder: React.FC<RecorderProps> = ({
       maxWidth: '100vw',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, maxWidth: 480, width: '100%', margin: '0 auto' }}>
-        <ToolbarButton
+        {/* <ToolbarButton
           icon={paused ? 'play' : 'debug-pause'}
           title={paused ? 'Resume' : 'Pause'}
           toggled={mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'}
@@ -448,15 +449,15 @@ export const Recorder: React.FC<RecorderProps> = ({
           style={{ width: 140, minWidth: 0, minHeight: 48, fontWeight: 700, fontSize: 18, border: '1.5px solid #d1d5db', color: '#23272f', background: '#fff', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
           {paused ? 'Resume' : 'Pause'}
-        </ToolbarButton>
+        </ToolbarButton> */}
         <ToolbarButton
           icon="trash"
           title="Delete"
           className="outline-button"
-          style={{ width: 140, minWidth: 0, minHeight: 48, fontWeight: 700, fontSize: 18, border: '1.5px solid #d1d5db', color: '#23272f', background: '#fff', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          style={{ width: '60%', minWidth: 0, minHeight: 48, fontWeight: 700, fontSize: 18, border: '1.5px solid #d1d5db', color: '#23272f', background: '#fff', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
           onClick={() => setShowDeleteConfirmation(true)}
         >
-          Delete
+          Discard and Delete
         </ToolbarButton>
         {/* TODO: Add options functionality, DO NOT REMOVE */}
         {/* <div className="dropdown" style={{ position: 'relative' }}>
@@ -591,7 +592,7 @@ export const Recorder: React.FC<RecorderProps> = ({
           alignItems: 'center',
           minWidth: 320,
         }}>
-          <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 16, color: '#23272f' }}>Are you sure you want to delete?</div>
+          <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 16, color: '#23272f', textAlign: 'center' }}>Are you sure you want to delete?</div>
           <div style={{ fontSize: 16, color: '#666', marginBottom: 24, textAlign: 'center' }}>This will close the extension and clear all captured data.</div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button

@@ -38,31 +38,31 @@ function setRunningFileId(fileId: string) {
   window.playwrightSetRunningFile(fileId);
 }
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
+// function download(filename: string, text: string) {
+//   const blob = new Blob([text], { type: 'text/plain' });
+//   const url = URL.createObjectURL(blob);
+//   try {
+//     const a = document.createElement('a');
+//     a.href = url;
+//     a.download = filename;
+//     a.click();
+//   } finally {
+//     URL.revokeObjectURL(url);
+//   }
+// }
 
-const codegenFilenames: Record<string, string> = {
-  'javascript': 'example.js',
-  'playwright-test': 'example.spec.ts',
-  'java-junit': 'TestExample.java',
-  'java': 'Example.java',
-  'python-pytest': 'test_example.py',
-  'python': 'example.py',
-  'python-async': 'example.py',
-  'csharp-mstest': 'Tests.cs',
-  'csharp-nunit': 'Tests.cs',
-  'csharp': 'Example.cs',
-};
+// const codegenFilenames: Record<string, string> = {
+//   'javascript': 'example.js',
+//   'playwright-test': 'example.spec.ts',
+//   'java-junit': 'TestExample.java',
+//   'java': 'Example.java',
+//   'python-pytest': 'test_example.py',
+//   'python': 'example.py',
+//   'python-async': 'example.py',
+//   'csharp-mstest': 'Tests.cs',
+//   'csharp-nunit': 'Tests.cs',
+//   'csharp': 'Example.cs',
+// };
 
 export const CrxRecorder: React.FC = ({
 }) => {
@@ -210,12 +210,14 @@ export const CrxRecorder: React.FC = ({
         setMode('none');
         setSelectedFileId(defaultSettings.targetLanguage);
         setRecorderKey(prev => prev + 1);
+        window.close();
+        window.open('https://optexity.com/', '_blank');
       }
     })();
 
-    const filename = codegenFilenames[selectedFileId];
-    download(filename, code);
-  }, [settings, source, selectedFileId, apiKey]);
+    // const filename = codegenFilenames[selectedFileId];
+    // download(filename, code);
+  }, [settings, source, apiKey]);
 
   React.useEffect(() => {
     if (!settings.experimental)

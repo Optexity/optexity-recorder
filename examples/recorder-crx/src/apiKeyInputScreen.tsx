@@ -33,18 +33,27 @@ export const APIKeyInputScreen: React.FC<APIKeyInputScreenProps> = ({ onStartCap
     }
   };
 
+  const handleGetApiKey = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Open the URL in a new tab first, then close the extension
+    chrome.tabs.create({ url: 'https://optexity.com/' }, () => {
+      // Close the extension popup/window
+      window.close();
+    });
+  };
+
   return (
     <div className='api-key-container'>
       <div className='api-key-form'>
         <div className='logo'>
           <img src='Optexity_logo_small_black.svg' alt='Optexity Logo' width='64' height='64' />
         </div>
-        <h2 className='api-key-title'>Enter your Optexity API key</h2>
+        <h2 className='api-key-title'>Optexity Recorder</h2>
         <form onSubmit={handleSubmit}>
           <input
-            type='text'
+            type='password'
             className='api-key-input'
-            placeholder='Enter your API key'
+            placeholder='Enter Your Optexity API Key'
             value={apiKey}
             onChange={e => setApiKey(e.target.value)}
             autoFocus
@@ -53,8 +62,7 @@ export const APIKeyInputScreen: React.FC<APIKeyInputScreenProps> = ({ onStartCap
             Don&apos;t have an API key?{' '}
             <a
               href='https://optexity.com/login'
-              target='_blank'
-              rel='noopener noreferrer'
+              onClick={handleGetApiKey}
               className='api-key-link'
             >
               Get one here

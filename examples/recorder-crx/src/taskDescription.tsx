@@ -52,10 +52,20 @@ export const TaskDescription: React.FC<TaskDescriptionProps> = ({ onStartCapturi
           <div className='countdown-number'>{countdown}</div>
         </div>
       )}
+      <button
+        className='logout-button-top-right'
+        onClick={onLogout}
+        disabled={countdown !== null}
+      >
+        <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'>
+          <path d='M6 2H3C2.44772 2 2 2.44772 2 3V13C2 13.5523 2.44772 14 3 14H6M11 12L14 8M14 8L11 4M14 8H6' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'/>
+        </svg>
+        <span>Logout</span>
+      </button>
       <div className='logo'>
         <img src='Optexity_logo_small_black.svg' alt='Optexity Logo' width='64' height='64' />
       </div>
-      <h3 className='greeting'>Hello, Optexity!</h3>
+      <h3 className='greeting'>Hello, there!</h3>
       <button
         className='start-capturing-button-landing'
         onClick={handleStartCapture}
@@ -63,13 +73,6 @@ export const TaskDescription: React.FC<TaskDescriptionProps> = ({ onStartCapturi
       >
         <span className='capture-icon' />
         Start Capture
-      </button>
-      <button
-        className='logout-button-landing'
-        onClick={onLogout}
-        disabled={countdown !== null}
-      >
-        Logout
       </button>
     </div>
   );

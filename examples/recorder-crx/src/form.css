@@ -32,7 +32,7 @@ form button[type="submit"] {
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
-  margin: 4px 2px;
+  /* margin: 4px 2px; */
   cursor: pointer;
   border-radius: 4px;
   transition: background-color 0.2s ease-in-out;
@@ -42,11 +42,11 @@ form button:hover {
   background-color: #45A049;
 }
 
-form button[type="submit"]:disabled {
+/* form button[type="submit"]:disabled {
   background-color: #ccc;
   color: #666;
   cursor: not-allowed;
-}
+} */
 
 form .note.error {
   color: darkred;
