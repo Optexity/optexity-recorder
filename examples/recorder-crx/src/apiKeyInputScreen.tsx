@@ -28,15 +28,31 @@ export const APIKeyInputScreen: React.FC<APIKeyInputScreenProps> = ({ onStartCap
     e.preventDefault();
     if (apiKey.trim()) {
       const trimmedKey = apiKey.trim();
-      localStorage.setItem('optexity_api_key', trimmedKey);
-      onStartCapturing(trimmedKey);
+      (async () => {
+        try {
+          const response = await fetch('https://api.optexity.com/api/v1/validate_api_key', {
+            method: 'POST',
+            body: JSON.stringify({ api_key: trimmedKey }),
+          });
+          const data = await response.json();
+          if (data.valid) {
+            localStorage.setItem('optexity_api_key', trimmedKey);
+            onStartCapturing(trimmedKey);
+          } else {
+            alert('Invalid API key, please try again or contact founders@optexity.com for assistance.');
+          }
+        } catch (error) {
+          console.error('Error validating API key:', error);
+          alert('Error validating API key. Please try again or contact founders@optexity.com for assistance.');
+        }
+      })();
     }
   };
 
   const handleGetApiKey = (e: React.MouseEvent) => {
     e.preventDefault();
     // Open the URL in a new tab first, then close the extension
-    chrome.tabs.create({ url: 'https://optexity.com/' }, () => {
+    chrome.tabs.create({ url: 'https://optexity.com/dashboard' }, () => {
       // Close the extension popup/window
       window.close();
     });
@@ -61,7 +77,7 @@ export const APIKeyInputScreen: React.FC<APIKeyInputScreenProps> = ({ onStartCap
           <p className='api-key-help'>
             Don&apos;t have an API key?{' '}
             <a
-              href='https://optexity.com/login'
+              href='https://optexity.com/dashboard'
               onClick={handleGetApiKey}
               className='api-key-link'
             >

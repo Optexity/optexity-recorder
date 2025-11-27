@@ -191,7 +191,7 @@ export const CrxRecorder: React.FC = ({
         formData.append('compressed_data', compressedBlob, 'eval_pages.json.gz');
         formData.append('api_key', apiKey);
 
-        const response = await fetch('http://localhost:8000/api/v1/save_demo', {
+        const response = await fetch('https://api.optexity.com/api/v1/save_demo', {
           method: 'POST',
           body: formData,
           headers: {
@@ -211,7 +211,7 @@ export const CrxRecorder: React.FC = ({
         setSelectedFileId(defaultSettings.targetLanguage);
         setRecorderKey(prev => prev + 1);
         window.close();
-        window.open('https://optexity.com/', '_blank');
+        window.open('https://optexity.com/dashboard', '_blank');
       }
     })();
 
