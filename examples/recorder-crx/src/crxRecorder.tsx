@@ -189,13 +189,12 @@ export const CrxRecorder: React.FC = ({
         const formData = new FormData();
         formData.append('code_file', new File([code], 'generated_code.py', { type: 'text/plain' }));
         formData.append('compressed_data', compressedBlob, 'eval_pages.json.gz');
-        formData.append('api_key', apiKey);
 
         const response = await fetch('https://api.optexity.com/api/v1/save_demo', {
           method: 'POST',
           body: formData,
           headers: {
-            'Authorization': 'Bearer test',
+            'X-Api-Key': apiKey,
           },
         });
 
