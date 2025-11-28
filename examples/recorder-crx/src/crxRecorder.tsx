@@ -211,7 +211,7 @@ export const CrxRecorder: React.FC = ({
         setSelectedFileId(defaultSettings.targetLanguage);
         setRecorderKey(prev => prev + 1);
         window.close();
-        window.open('https://optexity.com/dashboard', '_blank');
+        window.open('https://dashboard.optexity.com', '_blank');
       }
     })();
 
