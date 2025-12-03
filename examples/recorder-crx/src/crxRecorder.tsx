@@ -75,6 +75,8 @@ export const CrxRecorder: React.FC = ({
   const [showRecorder, setShowRecorder] = React.useState(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = React.useState(false);
   const [showSavedOverlay, setShowSavedOverlay] = React.useState(false);
+  const [showErrorPopup, setShowErrorPopup] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState('');
   const [recorderKey, setRecorderKey] = React.useState(0);
   const [apiKey, setApiKey] = React.useState('');
 
@@ -198,9 +200,14 @@ export const CrxRecorder: React.FC = ({
           },
         });
 
+        if (!response.ok)
+          throw new Error(`HTTP error! status: ${response.status}`);
+
         await response.json();
+        setShowSavedOverlay(true);
       } catch (error) {
-        console.error('Fetch error:', error);
+        setErrorMessage(String(error) || 'An unknown error occurred');
+        setShowErrorPopup(true);
       } finally {
         globalEvalPages.clear();
         setSources([]);
@@ -209,8 +216,10 @@ export const CrxRecorder: React.FC = ({
         setMode('none');
         setSelectedFileId(defaultSettings.targetLanguage);
         setRecorderKey(prev => prev + 1);
-        window.close();
-        window.open('https://dashboard.optexity.com', '_blank');
+        setTimeout(() => {
+          window.close();
+          window.open('https://dashboard.optexity.com', '_blank');
+        }, 10000);
       }
     })();
 
@@ -311,7 +320,7 @@ export const CrxRecorder: React.FC = ({
           left: 0,
           width: '100vw',
           height: '100vh',
-          background: 'rgba(0,0,0,0.4)',
+          background: 'rgba(0,0,0,0.5)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -319,40 +328,53 @@ export const CrxRecorder: React.FC = ({
         }}>
           <div style={{
             background: '#fff',
-            borderRadius: 12,
-            padding: '40px 32px',
-            boxShadow: '0 2px 16px rgba(0,0,0,0.15)',
+            borderRadius: 8,
+            padding: '32px 40px',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            minWidth: 320,
+            maxWidth: 400,
           }}>
-            <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 16, color: '#23272f' }}>Code has been successfully saved</div>
-            <button
-              style={{
-                marginTop: 16,
-                padding: '10px 24px',
-                fontSize: 16,
-                borderRadius: 8,
-                border: 'none',
-                background: '#5b6dfa',
-                color: '#fff',
-                cursor: 'pointer',
-                fontWeight: 500,
-              }}
-              onClick={() => {
-                setShowSavedOverlay(false);
-                setShowRecorder(false);
-                setSources([]);
-                setPaused(false);
-                setLog(new Map<string, CallLog>());
-                setMode('none');
-                setSelectedFileId(defaultSettings.targetLanguage);
-                setRecorderKey(prev => prev + 1);
-              }}
-            >
-              Record another workflow
-            </button>
+            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#1a1a1a', textAlign: 'center' }}>Recording saved successfully</div>
+            <div style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+              Redirecting to dashboard in 10 seconds...
+            </div>
+          </div>
+        </div>
+      )}
+      {showErrorPopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 8,
+            padding: '32px 40px',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            maxWidth: 400,
+            borderTop: '3px solid #dc2626',
+          }}>
+            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#1a1a1a', textAlign: 'center' }}>Error saving recording</div>
+            {errorMessage && <div style={{ fontSize: 13, color: '#dc2626', marginBottom: 12, textAlign: 'center', fontFamily: 'monospace' }}>{errorMessage}</div>}
+            <div style={{ fontSize: 14, color: '#666', marginBottom: 16, textAlign: 'center' }}>
+              Please try again or contact <span style={{ color: '#1a1a1a' }}>founders@optexity.com</span>
+            </div>
+            <div style={{ fontSize: 13, color: '#999', textAlign: 'center' }}>
+              Redirecting to dashboard in 10 seconds...
+            </div>
           </div>
         </div>
       )}
