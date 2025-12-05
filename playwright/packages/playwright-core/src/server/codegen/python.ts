@@ -56,7 +56,7 @@ export class PythonLanguageGenerator implements LanguageGenerator {
     const formatter = new PythonFormatter(4);
     const shouldMerge = actionInContext.shouldMerge ? actionInContext.shouldMerge : false;
     const recording_complete = action.name === 'completeRecording' ? true : false;
-    const comment = ` # {"uuid": "${actionInContext.uuid}" , "merge_with_previous": "${shouldMerge}" , "recording_complete": "${recording_complete}"}`
+    const comment = ` # {"uuid": "${actionInContext.uuid}" , "merge_with_previous": "${shouldMerge}" , "recording_complete": "${recording_complete}", "optexity_bid": "${actionInContext.optexityBid}"}`
 
     if (action.name === 'completeRecording') {
       formatter.add(comment);
