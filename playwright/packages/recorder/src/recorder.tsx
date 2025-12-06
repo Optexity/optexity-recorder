@@ -150,6 +150,7 @@ const ActionCard: React.FC<{ index: number, message: string, code: string }> = (
       boxSizing: 'border-box',
       overflow: 'hidden',
       transition: 'all 0.2s ease',
+      flexShrink: 0,
     }}>
       <div
         style={{
@@ -401,23 +402,21 @@ export const Recorder: React.FC<RecorderProps> = ({
       style={{
         flex: '1 1 auto',
         minHeight: 0,
-        padding: '0 16px 160px 16px',
+        padding: '16px 16px 160px 16px',
         overflowY: 'auto',
         overflowX: 'hidden',
         width: '100%',
         boxSizing: 'border-box',
         background: '#fafbfc',
-        height: actionCards.length > 1 ? '99%' : '100%',
-        maxHeight: actionCards.length > 1 ? '99%' : '100%',
         display: 'flex',
-        flexDirection: 'column-reverse',
-        justifyContent: 'flex-start',
+        flexDirection: 'column',
+        justifyContent: 'flex-end',
       }}
     >
-      <div ref={messagesEndRef} />
-      {actionCards.reverse().map(card => (
+      {actionCards.map(card => (
         <ActionCard key={card.index} index={card.index} message={card.message} code={card.code} />
       ))}
+      <div ref={messagesEndRef} />
     </div>
     <div style={{
       width: '100%',
