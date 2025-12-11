@@ -48,35 +48,33 @@ const highlightPython = (code: string): React.ReactNode[] => {
   const pythonKeywords = ['await', 'async', 'def', 'class', 'if', 'else', 'elif', 'for', 'while', 'try', 'except', 'finally', 'with', 'import', 'from', 'as', 'return', 'yield', 'pass', 'break', 'continue', 'True', 'False', 'None', 'and', 'or', 'not', 'in', 'is', 'lambda'];
   const parts: React.ReactNode[] = [];
   
-  // First, handle comments (they should be processed separately)
-  const commentRegex = /#.*$/gm;
-  const commentMatches: Array<{ start: number, end: number, text: string }> = [];
-  let match;
-  while ((match = commentRegex.exec(code)) !== null) {
-    commentMatches.push({ start: match.index, end: match.index + match[0].length, text: match[0] });
-  }
-  
   // Process the code
   const tokens: Array<{ start: number, end: number, type: string, text: string, color: string }> = [];
+  let match;
   
-  // Add comment tokens
-  commentMatches.forEach(comment => {
-    tokens.push({ ...comment, type: 'comment', color: '#6a737d' });
-  });
-  
-  // Add string tokens
+  // First, find all string tokens (so we can exclude # inside strings from being treated as comments)
   const stringRegex = /(['"])(?:(?=(\\?))\2.)*?\1/g;
+  const stringRanges: Array<{ start: number, end: number }> = [];
   while ((match = stringRegex.exec(code)) !== null) {
-    if (!commentMatches.some(c => match!.index >= c.start && match!.index < c.end)) {
-      tokens.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'string', color: '#032f62' });
+    stringRanges.push({ start: match.index, end: match.index + match[0].length });
+    tokens.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'string', color: '#032f62' });
+  }
+  
+  // Helper to check if a position is inside a string
+  const isInsideString = (pos: number) => stringRanges.some(s => pos >= s.start && pos < s.end);
+  
+  // Handle comments - only match # that's NOT inside a string
+  const commentRegex = /#.*$/gm;
+  while ((match = commentRegex.exec(code)) !== null) {
+    if (!isInsideString(match.index)) {
+      tokens.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'comment', color: '#6a737d' });
     }
   }
   
   // Add number tokens
   const numberRegex = /\b\d+\.?\d*\b/g;
   while ((match = numberRegex.exec(code)) !== null) {
-    if (!commentMatches.some(c => match!.index >= c.start && match!.index < c.end) &&
-        !tokens.some(t => match!.index >= t.start && match!.index < t.end)) {
+    if (!tokens.some(t => match!.index >= t.start && match!.index < t.end)) {
       tokens.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'number', color: '#005cc5' });
     }
   }
@@ -84,8 +82,7 @@ const highlightPython = (code: string): React.ReactNode[] => {
   // Add function call tokens
   const functionRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
   while ((match = functionRegex.exec(code)) !== null) {
-    if (!commentMatches.some(c => match!.index >= c.start && match!.index < c.end) &&
-        !tokens.some(t => match!.index >= t.start && match!.index < t.end)) {
+    if (!tokens.some(t => match!.index >= t.start && match!.index < t.end)) {
       tokens.push({ start: match.index, end: match.index + match[1].length, text: match[1], type: 'function', color: '#6f42c1' });
     }
   }
@@ -94,8 +91,7 @@ const highlightPython = (code: string): React.ReactNode[] => {
   pythonKeywords.forEach(keyword => {
     const keywordRegex = new RegExp(`\\b${keyword}\\b`, 'g');
     while ((match = keywordRegex.exec(code)) !== null) {
-      if (!commentMatches.some(c => match!.index >= c.start && match!.index < c.end) &&
-          !tokens.some(t => match!.index >= t.start && match!.index < t.end)) {
+      if (!tokens.some(t => match!.index >= t.start && match!.index < t.end)) {
         tokens.push({ start: match.index, end: match.index + match[0].length, text: match[0], type: 'keyword', color: '#d73a49' });
       }
     }
@@ -293,6 +289,12 @@ export const Recorder: React.FC<RecorderProps> = ({
       }
       else if (line.includes('.select_option(')) {
         cards.push({ index: index++, message: 'Select option action', code: line.split('# {"uuid":')[0].trim() });
+      }
+      else if (line.includes('.check(')) {
+        cards.push({ index: index++, message: 'Check checkbox action', code: line.split('# {"uuid":')[0].trim() });
+      }
+      else if (line.includes('.uncheck(')) {
+        cards.push({ index: index++, message: 'Uncheck checkbox action', code: line.split('# {"uuid":')[0].trim() });
       }
     }
     return cards;
