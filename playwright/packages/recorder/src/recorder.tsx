@@ -237,6 +237,7 @@ export const Recorder: React.FC<RecorderProps> = ({
   const [ariaSnapshotErrors, setAriaSnapshotErrors] = React.useState<SourceHighlight[]>();
   const [selectorFocusOnChange, setSelectorFocusOnChange] = React.useState<boolean | undefined>(true);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const fileId = selectedFileId || runningFileId || sources[0]?.id;
 
@@ -563,13 +564,59 @@ export const Recorder: React.FC<RecorderProps> = ({
       <ToolbarButton
         icon="check"
         title="Complete recording"
-        onClick={onSaveCode}
+        onClick={() => {
+          if (!isSaving) {
+            setIsSaving(true);
+            onSaveCode?.();
+          }
+        }}
+        disabled={isSaving}
         className="large-filled-button"
         style={{ width: '92%', minWidth: 0, minHeight: 56, fontSize: 22, fontWeight: 800, borderRadius: 18, margin: '0 auto' }}
       >
         Complete Capture
       </ToolbarButton>
     </div>
+    {isSaving && (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 99999,
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: 8,
+          padding: '32px 40px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          maxWidth: 360,
+        }}>
+          <div style={{
+            width: 48,
+            height: 48,
+            border: '4px solid #e5e7eb',
+            borderTopColor: '#5b6dfa',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginBottom: 20,
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#1a1a1a', textAlign: 'center' }}>Saving your recording...</div>
+          <div style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+            Please wait, this may take a few seconds.
+          </div>
+        </div>
+      </div>
+    )}
     {showDeleteConfirmation && (
       <div style={{
         position: 'fixed',
