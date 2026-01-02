@@ -77,6 +77,8 @@ export const CrxRecorder: React.FC = ({
   const [showSavedOverlay, setShowSavedOverlay] = React.useState(false);
   const [showErrorPopup, setShowErrorPopup] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
+  const [successCountdown, setSuccessCountdown] = React.useState(5);
+  const [errorCountdown, setErrorCountdown] = React.useState(5);
   const [recorderKey, setRecorderKey] = React.useState(0);
   const [apiKey, setApiKey] = React.useState('');
 
@@ -146,6 +148,22 @@ export const CrxRecorder: React.FC = ({
     };
   }, []);
 
+  // Countdown timer for success overlay
+  React.useEffect(() => {
+    if (showSavedOverlay && successCountdown > 0) {
+      const timer = setTimeout(() => setSuccessCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSavedOverlay, successCountdown]);
+
+  // Countdown timer for error overlay
+  React.useEffect(() => {
+    if (showErrorPopup && errorCountdown > 0) {
+      const timer = setTimeout(() => setErrorCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [showErrorPopup, errorCountdown]);
+
   const source = React.useMemo(() => sources.find(s => s.id === selectedFileId), [sources, selectedFileId]);
 
   // const requestStorageState = React.useCallback(() => {
@@ -204,9 +222,11 @@ export const CrxRecorder: React.FC = ({
           throw new Error(`HTTP error! status: ${response.status}`);
 
         await response.json();
+        setSuccessCountdown(5);
         setShowSavedOverlay(true);
       } catch (error) {
         setErrorMessage(String(error) || 'An unknown error occurred');
+        setErrorCountdown(5);
         setShowErrorPopup(true);
       } finally {
         globalEvalPages.clear();
@@ -338,7 +358,7 @@ export const CrxRecorder: React.FC = ({
           }}>
             <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#1a1a1a', textAlign: 'center' }}>Recording saved successfully</div>
             <div style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
-              Redirecting to dashboard in 10 seconds...
+              Redirecting to dashboard in {successCountdown} second{successCountdown !== 1 ? 's' : ''}...
             </div>
           </div>
         </div>
@@ -373,7 +393,7 @@ export const CrxRecorder: React.FC = ({
               Please try again or contact <span style={{ color: '#1a1a1a' }}>founders@optexity.com</span>
             </div>
             <div style={{ fontSize: 13, color: '#999', textAlign: 'center' }}>
-              Redirecting to dashboard in 10 seconds...
+              Redirecting to dashboard in {errorCountdown} second{errorCountdown !== 1 ? 's' : ''}...
             </div>
           </div>
         </div>
