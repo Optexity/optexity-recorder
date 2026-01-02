@@ -134,7 +134,7 @@ body.dark-mode .recorder .toolbar-button.toggled.circle-large-filled {
 }
 
 .recorder .toolbar-button.main-button {
-  background: #5b6dfa;
+  background: #FF4F18;
   color: #fff;
   border-radius: 6px;
   font-weight: 600;
@@ -147,7 +147,7 @@ body.dark-mode .recorder .toolbar-button.toggled.circle-large-filled {
 
 .recorder .toolbar-button.main-button:active,
 .recorder .toolbar-button.main-button:focus {
-  background: #3a4bb7;
+  background: #a1260d;
   color: #fff;
 }
 
@@ -173,7 +173,7 @@ body.dark-mode .recorder .toolbar-button.toggled.circle-large-filled {
 }
 
 .large-filled-button {
-  background: linear-gradient(90deg, #5b6dfa 0%, #4f5bd5 100%) !important;
+  background: linear-gradient(90deg, #FF4F18 0%, #FF0000 100%) !important;
   color: #fff !important;
   border: none !important;
   border-radius: 14px !important;
@@ -182,7 +182,7 @@ body.dark-mode .recorder .toolbar-button.toggled.circle-large-filled {
   min-width: 90%;
   min-height: 52px !important;
   margin-top: 12px;
-  box-shadow: 0 2px 8px rgba(91,109,250,0.08) !important;
+  box-shadow: 0 2px 8px rgba(255, 79, 24, 0.08) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;

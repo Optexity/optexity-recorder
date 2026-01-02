@@ -83,7 +83,7 @@
 .api-key-submit-button {
   width: 100%;
   padding: 12px 24px;
-  background: linear-gradient(90deg, #5b6dfa 0%, #4f5bd5 100%);
+  background: linear-gradient(90deg, #FF4F18 0%, #FF0000 100%);
   color: #fff;
   font-size: 1rem;
   font-weight: 500;
@@ -96,7 +96,7 @@
 }
 
 .api-key-submit-button:hover:not(:disabled) {
-  background: linear-gradient(90deg, #4f5bd5 0%, #5b6dfa 100%);
+  background: linear-gradient(90deg, #FF0000 0%, #FF4F18 100%);
   box-shadow: 0 4px 16px rgba(91, 109, 250, 0.15);
 }
 
