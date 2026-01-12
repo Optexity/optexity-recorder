@@ -52,7 +52,7 @@ export const APIKeyInputScreen: React.FC<APIKeyInputScreenProps> = ({ onStartCap
   const handleGetApiKey = (e: React.MouseEvent) => {
     e.preventDefault();
     // Open the URL in a new tab first, then close the extension
-    chrome.tabs.create({ url: 'https://dashboard.optexity.com' }, () => {
+    chrome.tabs.create({ url: 'https://dashboard.optexity.com/workflows' }, () => {
       // Close the extension popup/window
       window.close();
     });
@@ -77,7 +77,7 @@ export const APIKeyInputScreen: React.FC<APIKeyInputScreenProps> = ({ onStartCap
           <p className='api-key-help'>
             Don&apos;t have an API key?{' '}
             <a
-              href='https://dashboard.optexity.com'
+              href='https://dashboard.optexity.com/dashboard'
               onClick={handleGetApiKey}
               className='api-key-link'
             >

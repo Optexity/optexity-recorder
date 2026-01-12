@@ -238,7 +238,7 @@ export const CrxRecorder: React.FC = ({
         setRecorderKey(prev => prev + 1);
         setTimeout(() => {
           window.close();
-          window.open('https://dashboard.optexity.com', '_blank');
+          window.open('https://dashboard.optexity.com/workflows', '_blank');
         }, 10000);
       }
     })();
