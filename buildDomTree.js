@@ -7,6 +7,29 @@ export function buildDomTree(args) {
     denySvgElements = true,
   } = args;
 
+  function generateUuidV4() {
+    const cryptoObj = globalThis.crypto;
+    if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
+
+    const bytes = new Uint8Array(16);
+    if (cryptoObj?.getRandomValues) {
+      cryptoObj.getRandomValues(bytes);
+    } else {
+      // Extremely old/locked-down environments: best-effort fallback.
+      for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+
+    // RFC 4122 version 4.
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
+      16,
+      20
+    )}-${hex.slice(20)}`;
+  }
+
   function getHoverPointerElements() {
     const pointerSelectors = [];
 
@@ -1410,7 +1433,7 @@ export function buildDomTree(args) {
     isParentHighlighted = false
   ) {
     if (node.nodeType === Node.ELEMENT_NODE && !node.hasAttribute("optexity-bid")) {
-      const uuid = crypto.randomUUID();
+      const uuid = generateUuidV4();
       node.setAttribute("optexity-bid", uuid);
     }
     // Fast rejection checks first

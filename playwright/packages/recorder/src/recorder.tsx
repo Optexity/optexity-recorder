@@ -285,7 +285,7 @@ export const Recorder: React.FC<RecorderProps> = ({
       else if (line.includes('.dblclick(')) {
         cards.push({ index: index++, message: 'Double click element action', code: line.split('# {"uuid":')[0].trim() });
       }
-      else if (line.includes('.fill(') && (i == (lines.length - 1) || (!line.includes('"merge_with_previous": "true"') && !lines[i+1].includes('"merge_with_previous": "true"')) || (line.includes('"merge_with_previous": "true"') && !lines[i+1].includes('"merge_with_previous": "true"')))) {
+      else if (line.includes('.fill(') && (i == (lines.length - 1) || (!line.includes('"merge_with_previous": "true"') && !lines[i+1].includes('"merge_with_previous": "true"')) || (line.includes('"merge_with_previous": "true"') && !lines[i+1].includes('"merge_with_previous": "true"')) || (line.includes('"merge_with_previous": "true"') && lines[i+1].includes('.goto(')))) {
         cards.push({ index: index++, message: 'Type text action', code: line.split('# {"uuid":')[0].trim() });
       }
       else if (line.includes('.select_option(')) {
