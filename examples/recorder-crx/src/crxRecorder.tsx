@@ -27,7 +27,7 @@ import { APIKeyInputScreen } from './apiKeyInputScreen';
 import './apiKeyInputScreen.css';
 
 // Global Maps to store eval pages and contents
-const globalEvalPages = new Map<string, { [key: string]: any }>();
+const globalEvalPages = new Map<string, { eval_page: any; screenshot?: string }>();
 // const globalContents = new Map<string, string>();
 
 function setElementPicked(elementInfo: ElementInfo, userGesture?: boolean) {
@@ -95,7 +95,10 @@ export const CrxRecorder: React.FC = ({
       if (message.type === 'OPTEXITY_EVAL_PAGE') {
         (async () => {
           if (message.eval_page) {
-            globalEvalPages.set(message.file_id, message.eval_page);
+            globalEvalPages.set(message.file_id, {
+              eval_page: message.eval_page,
+              screenshot: message.screenshot // This will be undefined if no screenshot was captured
+            });
             // globalContents.set(message.file_id, message.content);
             sendResponse({ success: true });
           } else {

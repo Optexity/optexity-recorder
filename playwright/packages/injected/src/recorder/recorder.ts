@@ -1084,6 +1084,7 @@ export class Recorder {
       addEventListener(this.document, 'contextmenu', event => this._onContextMenu(event as MouseEvent), true),
       addEventListener(this.document, 'dragstart', event => this._onDragStart(event as DragEvent), true),
       addEventListener(this.document, 'input', event => this._onInput(event), true),
+      addEventListener(this.document, 'change', event => this._onInput(event), true),
       addEventListener(this.document, 'keydown', event => this._onKeyDown(event as KeyboardEvent), true),
       addEventListener(this.document, 'keyup', event => this._onKeyUp(event as KeyboardEvent), true),
       addEventListener(this.document, 'pointerdown', event => this._onPointerDown(event as PointerEvent), true),
