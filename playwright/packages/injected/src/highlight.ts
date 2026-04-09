@@ -91,7 +91,8 @@ export class Highlight {
 
   install() {
     // NOTE: document.documentElement can be null: https://github.com/microsoft/TypeScript/issues/50078
-    if (this._injectedScript.document.documentElement && !this._injectedScript.document.documentElement.contains(this._glassPaneElement))
+    const alreadyInDOM = this._injectedScript.document.documentElement?.contains(this._glassPaneElement);
+    if (this._injectedScript.document.documentElement && !alreadyInDOM)
       this._injectedScript.document.documentElement.appendChild(this._glassPaneElement);
   }
 
@@ -115,7 +116,7 @@ export class Highlight {
   uninstall() {
     if (this._rafRequest)
       cancelAnimationFrame(this._rafRequest);
-    this._glassPaneElement.remove();
+    this._glassPaneElement.parentNode?.removeChild(this._glassPaneElement);
   }
 
   showActionPoint(x: number, y: number) {
@@ -130,8 +131,8 @@ export class Highlight {
 
   clearHighlight() {
     for (const entry of this._renderedEntries) {
-      entry.highlightElement?.remove();
-      entry.tooltipElement?.remove();
+      entry.highlightElement?.parentNode?.removeChild(entry.highlightElement);
+      entry.tooltipElement?.parentNode?.removeChild(entry.tooltipElement);
     }
     this._renderedEntries = [];
   }
@@ -141,9 +142,6 @@ export class Highlight {
   }
 
   updateHighlight(entries: HighlightEntry[]) {
-    // Code below should trigger one layout and leave with the
-    // destroyed layout.
-
     if (this._highlightIsUpToDate(entries))
       return;
 

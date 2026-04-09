@@ -96,6 +96,11 @@ export class Recorder implements InstrumentationListener, IRecorder {
   }
 
   private async _install(recorderApp: IRecorderApp) {
+    // Force CSP bypass so that injected recorder scripts are not blocked by
+    // strict Content-Security-Policy headers (e.g. Okta login widgets).
+    // This must happen before any addInitScript / extendInjectedScript calls.
+    this._context._options.bypassCSP = true;
+
     this._recorderApp = recorderApp;
     recorderApp.once('close', () => {
       this._debugger.resume(false);

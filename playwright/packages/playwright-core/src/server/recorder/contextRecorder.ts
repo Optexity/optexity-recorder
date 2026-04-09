@@ -153,7 +153,9 @@ export class ContextRecorder extends EventEmitter {
   }
 
   async install() {
-    this._context.on(BrowserContext.Events.Page, (page: Page) => this._onPage(page));
+    this._context.on(BrowserContext.Events.Page, (page: Page) => {
+      this._onPage(page);
+    });
     for (const page of this._context.pages())
       this._onPage(page);
     this._context.on(BrowserContext.Events.Dialog, (dialog: Dialog) => this._onDialog(dialog.page(), '', {}));

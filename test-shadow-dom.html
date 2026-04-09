@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow DOM Recording Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 2rem; color: #333; }
+    h1 { margin-bottom: 1.5rem; }
+    h2 { margin-bottom: 0.75rem; font-size: 1.1rem; color: #666; }
+    section { background: #fff; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body>
+  <h1>Shadow DOM Recording Test Page</h1>
+
+  <!-- 1. Regular DOM baseline -->
+  <section>
+    <h2>1. Regular DOM (baseline)</h2>
+    <button id="regular-btn">Regular Button</button>
+    <input id="regular-input" type="text" placeholder="Type here (regular DOM)">
+    <select id="regular-select">
+      <option value="a">Option A</option>
+      <option value="b">Option B</option>
+    </select>
+  </section>
+
+  <!-- 2. Simple open shadow DOM -->
+  <section>
+    <h2>2. Simple Open Shadow DOM</h2>
+    <div id="simple-shadow-host"></div>
+  </section>
+
+  <!-- 3. Nested shadow DOM (shadow inside shadow) -->
+  <section>
+    <h2>3. Nested Shadow DOM (2 levels deep)</h2>
+    <div id="nested-shadow-host"></div>
+  </section>
+
+  <!-- 4. Shadow DOM with form elements -->
+  <section>
+    <h2>4. Shadow DOM Form</h2>
+    <div id="form-shadow-host"></div>
+  </section>
+
+  <!-- 5. Shadow DOM with slotted content -->
+  <section>
+    <h2>5. Shadow DOM with Slots</h2>
+    <card-component id="slotted-card">
+      <span slot="title">Slotted Title</span>
+      <p slot="body">This paragraph is slotted into the shadow DOM.</p>
+      <button slot="actions" id="slotted-btn">Slotted Button</button>
+    </card-component>
+  </section>
+
+  <!-- 6. Shadow DOM with dynamic re-renders -->
+  <section>
+    <h2>6. Shadow DOM with Dynamic Re-renders</h2>
+    <div id="dynamic-shadow-host"></div>
+  </section>
+
+  <section id="log-section">
+    <h2>Event Log</h2>
+    <div id="log" style="font-family: monospace; font-size: 0.85rem; max-height: 200px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 0.75rem; border-radius: 4px;"></div>
+  </section>
+
+  <script>
+    const log = document.getElementById('log');
+    function addLog(msg) {
+      const line = document.createElement('div');
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      log.prepend(line);
+    }
+
+    // --- 2. Simple shadow DOM ---
+    const simpleHost = document.getElementById('simple-shadow-host');
+    const simpleShadow = simpleHost.attachShadow({ mode: 'open' });
+    simpleShadow.innerHTML = `
+      <style>
+        button { padding: 8px 16px; background: #4a90d9; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px; }
+        button:hover { background: #357abd; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+      </style>
+      <button id="shadow-btn-1">Shadow Button 1</button>
+      <button id="shadow-btn-2">Shadow Button 2</button>
+      <input id="shadow-input" type="text" placeholder="Type here (shadow DOM)">
+    `;
+    simpleShadow.getElementById('shadow-btn-1').addEventListener('click', () => addLog('Shadow Button 1 clicked'));
+    simpleShadow.getElementById('shadow-btn-2').addEventListener('click', () => addLog('Shadow Button 2 clicked'));
+    simpleShadow.getElementById('shadow-input').addEventListener('input', e => addLog(`Shadow input: "${e.target.value}"`));
+
+    // --- 3. Nested shadow DOM ---
+    const nestedHost = document.getElementById('nested-shadow-host');
+    const outerShadow = nestedHost.attachShadow({ mode: 'open' });
+    outerShadow.innerHTML = `
+      <style>
+        .outer { padding: 12px; border: 2px dashed #aaa; border-radius: 6px; }
+        .outer-label { font-size: 0.85rem; color: #888; margin-bottom: 8px; }
+        button { padding: 8px 16px; background: #e67e22; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px; }
+      </style>
+      <div class="outer">
+        <div class="outer-label">Outer shadow root</div>
+        <button id="outer-btn">Outer Shadow Button</button>
+        <div id="inner-host"></div>
+      </div>
+    `;
+    outerShadow.getElementById('outer-btn').addEventListener('click', () => addLog('Outer shadow button clicked'));
+
+    const innerHost = outerShadow.getElementById('inner-host');
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    innerShadow.innerHTML = `
+      <style>
+        .inner { padding: 12px; border: 2px dotted #ccc; border-radius: 6px; margin-top: 8px; }
+        .inner-label { font-size: 0.85rem; color: #888; margin-bottom: 8px; }
+        button { padding: 8px 16px; background: #27ae60; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+      </style>
+      <div class="inner">
+        <div class="inner-label">Inner shadow root (nested)</div>
+        <button id="inner-btn">Inner Shadow Button</button>
+        <input id="inner-input" type="text" placeholder="Type here (nested shadow)">
+      </div>
+    `;
+    innerShadow.getElementById('inner-btn').addEventListener('click', () => addLog('Inner (nested) shadow button clicked'));
+    innerShadow.getElementById('inner-input').addEventListener('input', e => addLog(`Inner shadow input: "${e.target.value}"`));
+
+    // --- 4. Shadow DOM form ---
+    const formHost = document.getElementById('form-shadow-host');
+    const formShadow = formHost.attachShadow({ mode: 'open' });
+    formShadow.innerHTML = `
+      <style>
+        form { display: flex; flex-direction: column; gap: 10px; max-width: 320px; }
+        label { font-weight: 600; font-size: 0.9rem; }
+        input, select, textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+        button { padding: 8px 16px; background: #8e44ad; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #6c3483; }
+        .checkbox-row { display: flex; align-items: center; gap: 6px; }
+      </style>
+      <form id="shadow-form">
+        <label for="sf-name">Name</label>
+        <input id="sf-name" type="text" placeholder="Your name">
+        <label for="sf-email">Email</label>
+        <input id="sf-email" type="email" placeholder="you@example.com">
+        <label for="sf-role">Role</label>
+        <select id="sf-role">
+          <option value="">Select a role</option>
+          <option value="dev">Developer</option>
+          <option value="qa">QA Engineer</option>
+          <option value="pm">Product Manager</option>
+        </select>
+        <label for="sf-notes">Notes</label>
+        <textarea id="sf-notes" rows="2" placeholder="Any notes..."></textarea>
+        <div class="checkbox-row">
+          <input id="sf-agree" type="checkbox">
+          <label for="sf-agree">I agree to the terms</label>
+        </div>
+        <button type="submit" id="sf-submit">Submit</button>
+      </form>
+    `;
+    formShadow.getElementById('shadow-form').addEventListener('submit', e => {
+      e.preventDefault();
+      addLog('Shadow form submitted');
+    });
+    formShadow.getElementById('sf-role').addEventListener('change', e => addLog(`Shadow form role: "${e.target.value}"`));
+
+    // --- 5. Custom element with slots ---
+    class CardComponent extends HTMLElement {
+      constructor() {
+        super();
+        const shadow = this.attachShadow({ mode: 'open' });
+        shadow.innerHTML = `
+          <style>
+            .card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+            .card-title { background: #2c3e50; color: #fff; padding: 12px 16px; font-weight: 600; }
+            .card-body { padding: 16px; }
+            .card-actions { padding: 12px 16px; border-top: 1px solid #eee; display: flex; gap: 8px; }
+          </style>
+          <div class="card">
+            <div class="card-title"><slot name="title">Default Title</slot></div>
+            <div class="card-body"><slot name="body">Default body content.</slot></div>
+            <div class="card-actions"><slot name="actions"></slot></div>
+          </div>
+        `;
+      }
+    }
+    customElements.define('card-component', CardComponent);
+    document.getElementById('slotted-btn').addEventListener('click', () => addLog('Slotted button clicked'));
+
+    // --- 6. Dynamic re-renders inside shadow DOM ---
+    const dynamicHost = document.getElementById('dynamic-shadow-host');
+    const dynamicShadow = dynamicHost.attachShadow({ mode: 'open' });
+    let counter = 0;
+
+    function renderDynamic() {
+      dynamicShadow.innerHTML = `
+        <style>
+          .dynamic-container { display: flex; align-items: center; gap: 12px; }
+          button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: #fff; }
+          .increment { background: #c0392b; }
+          .increment:hover { background: #a93226; }
+          .reset { background: #7f8c8d; }
+          .reset:hover { background: #616a6b; }
+          .count { font-size: 1.2rem; font-weight: 700; min-width: 40px; text-align: center; }
+          input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        </style>
+        <div class="dynamic-container">
+          <button class="increment" id="dyn-increment">+1</button>
+          <span class="count" id="dyn-count">${counter}</span>
+          <button class="reset" id="dyn-reset">Reset</button>
+          <input id="dyn-input" type="text" placeholder="Re-rendered on every click">
+        </div>
+      `;
+      dynamicShadow.getElementById('dyn-increment').addEventListener('click', () => {
+        counter++;
+        addLog(`Dynamic counter: ${counter}`);
+        renderDynamic();
+      });
+      dynamicShadow.getElementById('dyn-reset').addEventListener('click', () => {
+        counter = 0;
+        addLog('Dynamic counter reset');
+        renderDynamic();
+      });
+      dynamicShadow.getElementById('dyn-input').addEventListener('input', e => addLog(`Dynamic input: "${e.target.value}"`));
+    }
+    renderDynamic();
+  </script>
+</body>
+</html>

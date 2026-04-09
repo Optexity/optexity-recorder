@@ -1342,11 +1342,19 @@ export class Recorder {
   }
 
   deepEventTarget(event: Event): HTMLElement {
-    for (const element of event.composedPath()) {
-      if (!this.overlay?.contains(element as Element))
-        return element as HTMLElement;
+    const composedPath = event.composedPath();
+    for (const element of composedPath) {
+      if (!this.overlay?.contains(element as Element)) {
+        const target = element as HTMLElement;
+        if (!target.isConnected && event instanceof MouseEvent) {
+          const resolved = this.document.elementFromPoint(event.clientX, event.clientY);
+          if (resolved)
+            return resolved as HTMLElement;
+        }
+        return target;
+      }
     }
-    return event.composedPath()[0] as HTMLElement;
+    return composedPath[0] as HTMLElement;
   }
 
   setMode(mode: Mode) {
@@ -1454,7 +1462,7 @@ class Dialog {
   close() {
     if (!this._dialogElement)
       return;
-    this._dialogElement.remove();
+    this._dialogElement.parentNode?.removeChild(this._dialogElement);
     this._recorder.document.removeEventListener('keydown', this._keyboardListener!);
     this._dialogElement = null;
   }
