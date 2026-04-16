@@ -171,4 +171,5 @@ export type ActionInContext = {
   content?: string;
   eval_page?: { [key: string]: any };
   optexityBid?: string;
+  screenshot?: string;
 };

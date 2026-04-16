@@ -37,6 +37,7 @@ import type * as channels from '@protocol/channels';
 import type * as actions from '@recorder/actions';
 import type { Source, SourceHighlight } from '@recorder/recorderTypes';
 import { useEffect } from 'react';
+import { serverSideCallMetadata } from '../instrumentation';
 
 type BindingSource = { frame: Frame, page: Page };
 
@@ -109,16 +110,18 @@ export class ContextRecorder extends EventEmitter {
         if (languageGenerator === this._orderedLanguages[0])
           this._throttledOutputFile?.setContent(source.text);
       }
-      try{
+      try {
+        const lastAction = actions[actions.length - 1];
         chrome.runtime.sendMessage({
           type: 'OPTEXITY_EVAL_PAGE',
-          eval_page: actions[actions.length - 1].eval_page,
-          // content: actions[actions.length - 1].content,
-            file_id: actions[actions.length - 1].uuid,
-          });
+          eval_page: lastAction.eval_page,
+          file_id: lastAction.uuid,
+          screenshot: lastAction.screenshot,
+        });
       } catch (error) {
-        console.log('error in generateCode : ', error);
+        console.error('Failed to send action data:', error);
       }
+    
       this.emit(ContextRecorder.Events.Change, {
         sources: this._recorderSources,
         actions
@@ -304,15 +307,17 @@ export class ContextRecorder extends EventEmitter {
     const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
     const frameDescription = await this._describeFrame(frame);
     const { content, eval_page } = await this.get_eval_page(frame);
-    console.log('--------------------------------')
-    console.log('action in _createActionInContext : ', action);
 
+    // Capture screenshot of the page at action time
+    let screenshot: string | undefined;
     try {
-      console.log('selector in _createActionInContext : ', action.selector);
+      const page = frame._page;
+      const screenshotBuffer = await page.screenshot(serverSideCallMetadata(), { type: 'png', fullPage: false });
+      screenshot = screenshotBuffer.toString('base64');
     } catch (e) {
-      console.log('Error: ', e);
+      console.error('Error capturing screenshot:', e);
     }
-    // console.log('eval_page : ', eval_page);
+
     const actionInContext: actions.ActionInContext = {
       frame: frameDescription,
       action,
@@ -321,6 +326,7 @@ export class ContextRecorder extends EventEmitter {
       uuid: _uuid,
       content: content,
       eval_page: eval_page,
+      screenshot,
     };
     await this._delegate.rewriteActionInContext?.(this._pageAliases, actionInContext);
     return actionInContext;
