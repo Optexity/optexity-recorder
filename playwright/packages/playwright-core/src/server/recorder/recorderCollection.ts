@@ -46,7 +46,15 @@ export class RecorderCollection extends EventEmitter {
   }
 
   setEnabled(enabled: boolean) {
+    if (this._enabled === enabled)
+      return;
     this._enabled = enabled;
+    if (enabled)
+      this._actions = [];
+  }
+
+  isEnabled() {
+    return this._enabled;
   }
 
   async performAction(actionInContext: actions.ActionInContext) {
@@ -56,6 +64,8 @@ export class RecorderCollection extends EventEmitter {
   }
 
   addRecordedAction(actionInContext: actions.ActionInContext) {
+    if (!this._enabled)
+      return;
     if (['openPage', 'closePage'].includes(actionInContext.action.name)) {
       this._actions.push(actionInContext);
       this._fireChange();
