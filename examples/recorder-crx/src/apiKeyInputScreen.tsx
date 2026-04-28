@@ -30,7 +30,7 @@ export const APIKeyInputScreen: React.FC<APIKeyInputScreenProps> = ({ onStartCap
       const trimmedKey = apiKey.trim();
       (async () => {
         try {
-          const response = await fetch('https://api.optexity.com/api/v1/validate_api_key', {
+          const response = await fetch('http://localhost:8000/api/v1/validate_api_key', {
             method: 'POST',
             body: JSON.stringify({ api_key: trimmedKey }),
           });

@@ -75,12 +75,31 @@ export type GenerateSelectorOptions = {
   multiple?: boolean;
 };
 
-export function generateSelector(injectedScript: InjectedScript, targetElement: Element, options: GenerateSelectorOptions): { selector: string, selectors: string[], elements: Element[] } {
+export type SelectorCandidateBasis = {
+  text: boolean;
+  aria: boolean;
+  class: boolean;
+  id: boolean;
+  testId: boolean;
+  nth: boolean;
+};
+
+export type SelectorCandidate = {
+  selector: string;
+  engine: string;
+  score: number;
+  rank: number;
+  matchedElements: number;
+  isUnique: boolean;
+  basis: SelectorCandidateBasis;
+};
+
+export function generateSelector(injectedScript: InjectedScript, targetElement: Element, options: GenerateSelectorOptions): { selector: string, selectors: string[], elements: Element[], selectorCandidates: SelectorCandidate[] } {
   injectedScript._evaluator.begin();
   const cache: Cache = { allowText: new Map(), disallowText: new Map() };
   beginAriaCaches();
   try {
-    let selectors: string[] = [];
+    let selectorTokenSets: SelectorToken[][] = [];
     if (options.forTextExpect) {
       let targetTokens = cssFallback(injectedScript, targetElement.ownerDocument.documentElement, options);
       for (let element: Element | undefined = targetElement; element; element = parentElementOrShadowHost(element)) {
@@ -93,7 +112,7 @@ export function generateSelector(injectedScript: InjectedScript, targetElement: 
           break;
         }
       }
-      selectors = [joinTokens(targetTokens)];
+      selectorTokenSets = [targetTokens];
     } else {
       // Note: this matches InjectedScript.retarget().
       if (!targetElement.matches('input,textarea,select') && !(targetElement as any).isContentEditable) {
@@ -122,18 +141,22 @@ export function generateSelector(injectedScript: InjectedScript, targetElement: 
           if (hasCSSIdToken(css))
             tokens.push(cssFallback(injectedScript, targetElement, { ...options, noCSSId: true }));
         }
-        selectors = [...new Set(tokens.map(t => joinTokens(t!)))];
+        selectorTokenSets = tokens as SelectorToken[][];
       } else {
         const targetTokens = generateSelectorFor(cache, injectedScript, targetElement, options) || cssFallback(injectedScript, targetElement, options);
-        selectors = [joinTokens(targetTokens)];
+        selectorTokenSets = [targetTokens];
       }
     }
+    const root = options.root ?? targetElement.ownerDocument;
+    const selectorCandidates = rankSelectorCandidates(injectedScript, root, selectorTokenSets);
+    const selectors = selectorCandidates.map(candidate => candidate.selector);
     const selector = selectors[0];
     const parsedSelector = injectedScript.parseSelector(selector);
     return {
       selector,
       selectors,
-      elements: injectedScript.querySelectorAll(parsedSelector, options.root ?? targetElement.ownerDocument)
+      elements: injectedScript.querySelectorAll(parsedSelector, root),
+      selectorCandidates,
     };
   } finally {
     endAriaCaches();
@@ -473,6 +496,90 @@ function combineScores(tokens: SelectorToken[]): number {
   for (let i = 0; i < tokens.length; i++)
     score += tokens[i].score * (tokens.length - i);
   return score;
+}
+
+function rankSelectorCandidates(injectedScript: InjectedScript, scope: Element | Document, tokenSets: SelectorToken[][]): SelectorCandidate[] {
+  const bySelector = new Map<string, SelectorCandidate>();
+
+  for (const tokenSet of tokenSets) {
+    if (!tokenSet || !tokenSet.length)
+      continue;
+
+    const selector = joinTokens(tokenSet);
+    const parsedSelector = injectedScript.parseSelector(selector);
+    const matchedElements = injectedScript.querySelectorAll(parsedSelector, scope).length;
+    const candidate: SelectorCandidate = {
+      selector,
+      engine: inferPrimaryEngine(tokenSet),
+      score: combineScores(tokenSet),
+      rank: 0,
+      matchedElements,
+      isUnique: matchedElements === 1,
+      basis: inferSelectorBasis(tokenSet),
+    };
+
+    const existing = bySelector.get(selector);
+    if (!existing || candidate.score < existing.score || (candidate.score === existing.score && candidate.matchedElements < existing.matchedElements))
+      bySelector.set(selector, candidate);
+  }
+
+  const ranked = [...bySelector.values()];
+  ranked.sort((a, b) => {
+    if (a.isUnique !== b.isUnique)
+      return a.isUnique ? -1 : 1;
+    if (a.score !== b.score)
+      return a.score - b.score;
+    if (a.matchedElements !== b.matchedElements)
+      return a.matchedElements - b.matchedElements;
+    return a.selector.length - b.selector.length;
+  });
+
+  for (let i = 0; i < ranked.length; i++)
+    ranked[i].rank = i + 1;
+
+  return ranked;
+}
+
+function inferPrimaryEngine(tokens: SelectorToken[]): string {
+  for (const token of tokens) {
+    if (token.engine !== 'css' && token.engine !== 'nth')
+      return token.engine.replace('internal:', '');
+  }
+  if (tokens.some(token => token.engine === 'css'))
+    return 'css';
+  if (tokens.some(token => token.engine === 'nth'))
+    return 'nth';
+  return tokens[0]?.engine || 'unknown';
+}
+
+function inferSelectorBasis(tokens: SelectorToken[]): SelectorCandidateBasis {
+  const basis: SelectorCandidateBasis = {
+    text: false,
+    aria: false,
+    class: false,
+    id: false,
+    testId: false,
+    nth: false,
+  };
+
+  for (const token of tokens) {
+    const selector = token.selector.toLowerCase();
+
+    if (token.engine === 'internal:text' || token.engine === 'internal:has-text')
+      basis.text = true;
+    if (token.engine === 'internal:role' || token.engine === 'internal:label' || selector.includes('aria-'))
+      basis.aria = true;
+    if (token.engine === 'internal:testid' || selector.includes('data-testid') || selector.includes('data-test-id') || selector.includes('data-test'))
+      basis.testId = true;
+    if (token.engine === 'nth' || selector.includes(':nth-'))
+      basis.nth = true;
+    if (token.engine === 'css' && (token.selector.startsWith('#') || token.selector.startsWith('[id=')))
+      basis.id = true;
+    if (token.engine === 'css' && token.selector.includes('.'))
+      basis.class = true;
+  }
+
+  return basis;
 }
 
 function chooseFirstSelector(injectedScript: InjectedScript, scope: Element | Document, targetElement: Element, selectors: SelectorToken[][], allowNthMatch: boolean): SelectorToken[] | null {

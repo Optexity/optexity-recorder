@@ -56,7 +56,19 @@ export class PythonLanguageGenerator implements LanguageGenerator {
     const formatter = new PythonFormatter(4);
     const shouldMerge = actionInContext.shouldMerge ? actionInContext.shouldMerge : false;
     const recording_complete = action.name === 'completeRecording' ? true : false;
-    const comment = ` # {"uuid": "${actionInContext.uuid}" , "merge_with_previous": "${shouldMerge}" , "recording_complete": "${recording_complete}", "optexity_bid": "${actionInContext.optexityBid}"}`
+    const commentPayload: Record<string, unknown> = {
+      uuid: `${actionInContext.uuid}`,
+      merge_with_previous: shouldMerge,
+      recording_complete,
+      optexity_bid: `${actionInContext.optexityBid}`,
+    };
+    if ('selectorCandidates' in action && action.selectorCandidates?.length) {
+      commentPayload.selector_candidates = action.selectorCandidates.slice(0, 3).map(candidate => ({
+        ...candidate,
+        locator: this._asLocator(candidate.selector),
+      }));
+    }
+    const comment = ` # ${JSON.stringify(commentPayload)}`;
 
     if (action.name === 'completeRecording') {
       formatter.add(comment);

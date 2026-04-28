@@ -210,7 +210,7 @@ export const CrxRecorder: React.FC = ({
         formData.append('code_file', new File([code], 'generated_code.py', { type: 'text/plain' }));
         formData.append('compressed_data', compressedBlob, 'eval_pages.json.gz');
 
-        const response = await fetch('https://api.optexity.com/api/v1/save_demo', {
+        const response = await fetch('http://localhost:8000/api/v1/save_demo', {
           method: 'POST',
           body: formData,
           headers: {

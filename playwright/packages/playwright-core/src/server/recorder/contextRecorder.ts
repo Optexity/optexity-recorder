@@ -109,15 +109,18 @@ export class ContextRecorder extends EventEmitter {
         if (languageGenerator === this._orderedLanguages[0])
           this._throttledOutputFile?.setContent(source.text);
       }
-      try{
-        chrome.runtime.sendMessage({
-          type: 'OPTEXITY_EVAL_PAGE',
-          eval_page: actions[actions.length - 1].eval_page,
-          // content: actions[actions.length - 1].content,
-            file_id: actions[actions.length - 1].uuid,
-          });
-      } catch (error) {
-        console.log('error in generateCode : ', error);
+      const lastAction = actions[actions.length - 1];
+      if (lastAction) {
+        try{
+          chrome.runtime.sendMessage({
+            type: 'OPTEXITY_EVAL_PAGE',
+            eval_page: lastAction.eval_page,
+            // content: lastAction.content,
+              file_id: lastAction.uuid,
+            });
+        } catch (error) {
+          console.log('error in generateCode : ', error);
+        }
       }
       this.emit(ContextRecorder.Events.Change, {
         sources: this._recorderSources,
@@ -173,7 +176,26 @@ export class ContextRecorder extends EventEmitter {
   }
 
   setEnabled(enabled: boolean) {
+    const wasEnabled = this._collection.isEnabled();
     this._collection.setEnabled(enabled);
+    if (enabled && !wasEnabled) {
+      for (const page of this._context.pages()) {
+        if (!this._pageAliases.has(page) || page.opener())
+          continue;
+        const timestamp = new Date().getTime();
+        const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
+        this._collection.addRecordedAction({
+          frame: this._describeMainFrame(page),
+          action: {
+            name: 'openPage',
+            url: page.mainFrame().url(),
+            signals: [],
+          },
+          startTime: monotonicTime(),
+          uuid: _uuid,
+        });
+      }
+    }
   }
 
   dispose() {
