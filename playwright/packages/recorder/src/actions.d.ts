@@ -16,6 +16,25 @@
 
 type Point = { x: number, y: number };
 
+export type SelectorCandidateBasis = {
+  text: boolean;
+  aria: boolean;
+  class: boolean;
+  id: boolean;
+  testId: boolean;
+  nth: boolean;
+};
+
+export type SelectorCandidate = {
+  selector: string;
+  engine: string;
+  score: number;
+  rank: number;
+  matchedElements: number;
+  isUnique: boolean;
+  basis: SelectorCandidateBasis;
+};
+
 export type ActionName =
   'check' |
   'click' |
@@ -45,6 +64,7 @@ export type CompleteRecordingAction = ActionBase & {
 
 export type ActionWithSelector = ActionBase & {
   selector: string,
+  selectorCandidates?: SelectorCandidate[],
 };
 
 export type ClickAction = ActionWithSelector & {
@@ -82,9 +102,8 @@ export type ClosesPageAction = ActionBase & {
   name: 'closePage',
 };
 
-export type PressAction = ActionBase & {
+export type PressAction = ActionWithSelector & {
   name: 'press',
-  selector: string,
   key: string,
   modifiers: number,
 };

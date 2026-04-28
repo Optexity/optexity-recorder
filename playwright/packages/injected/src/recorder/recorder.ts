@@ -233,7 +233,7 @@ class RecordActionTool implements RecorderTool {
       // Interestingly, inputElement.checked is reversed inside this event handler.
       this._performAction({
         name: checkbox.checked ? 'check' : 'uncheck',
-        selector: this._hoveredModel!.selector,
+        ...this._selectorPayload(this._hoveredModel!),
         signals: [],
       });
       return;
@@ -247,7 +247,7 @@ class RecordActionTool implements RecorderTool {
       this._pendingClickAction = {
         action: {
           name: 'click',
-          selector: this._hoveredModel!.selector,
+          ...this._selectorPayload(this._hoveredModel!),
           position: positionForEvent(event),
           signals: [],
           button: buttonForEvent(event),
@@ -309,7 +309,7 @@ class RecordActionTool implements RecorderTool {
 
     this._performAction({
       name: 'click',
-      selector: this._hoveredModel!.selector,
+      ...this._selectorPayload(this._hoveredModel!),
       position: positionForEvent(event),
       signals: [],
       button: 'right',
@@ -374,7 +374,7 @@ class RecordActionTool implements RecorderTool {
     if (target.nodeName === 'INPUT' && (target as HTMLInputElement).type.toLowerCase() === 'file') {
       this._recorder.recordAction({
         name: 'setInputFiles',
-        selector: this._activeModel!.selector,
+        ...this._selectorPayload(this._activeModel!),
         signals: [],
         files: [...((target as HTMLInputElement).files || [])].map(file => file.name),
       });
@@ -385,7 +385,7 @@ class RecordActionTool implements RecorderTool {
       this._recorder.recordAction({
         name: 'fill',
         // must use hoveredModel instead of activeModel for it to work in webkit
-        selector: this._hoveredModel!.selector,
+        ...this._selectorPayload(this._hoveredModel!),
         signals: [],
         text: target.value,
       });
@@ -404,7 +404,7 @@ class RecordActionTool implements RecorderTool {
       // TODO: If you want to capture optexity bid then this._performAction({ instead of this._recorder.recordAction({
       this._recorder.recordAction({
         name: 'fill',
-        selector: this._activeModel!.selector,
+        ...this._selectorPayload(this._activeModel!),
         signals: [],
         text: target.isContentEditable ? target.innerText : (target as HTMLInputElement).value,
       });
@@ -416,7 +416,7 @@ class RecordActionTool implements RecorderTool {
         return;
       this._performAction({
         name: 'select',
-        selector: this._activeModel!.selector,
+        ...this._selectorPayload(this._activeModel!),
         options: [...selectElement.selectedOptions].map(option => option.value),
         signals: []
       });
@@ -438,7 +438,7 @@ class RecordActionTool implements RecorderTool {
       if (checkbox) {
         this._performAction({
           name: checkbox.checked ? 'uncheck' : 'check',
-          selector: this._activeModel!.selector,
+          ...this._selectorPayload(this._activeModel!),
           signals: [],
         });
         return;
@@ -447,7 +447,7 @@ class RecordActionTool implements RecorderTool {
 
     this._performAction({
       name: 'press',
-      selector: this._activeModel!.selector,
+      ...this._selectorPayload(this._activeModel!),
       signals: [],
       key: event.key,
       modifiers: modifiersForEvent(event),
@@ -478,7 +478,7 @@ class RecordActionTool implements RecorderTool {
     // We'd like to ignore this stray event.
     if (userGesture && activeElement === this._recorder.document.body)
       return;
-    const result = activeElement ? this._recorder.injectedScript.generateSelector(activeElement, { testIdAttributeName: this._recorder.state.testIdAttributeName }) : null;
+    const result = activeElement ? this._recorder.injectedScript.generateSelector(activeElement, { testIdAttributeName: this._recorder.state.testIdAttributeName, multiple: true }) : null;
     this._activeModel = result && result.selector ? { ...result, color: HighlightColors.action } : null;
     if (userGesture) {
       this._hoveredElement = activeElement as HTMLElement | null;
@@ -589,11 +589,19 @@ class RecordActionTool implements RecorderTool {
       this._recorder.updateHighlight(null, true);
       return;
     }
-    const { selector, elements } = this._recorder.injectedScript.generateSelector(this._hoveredElement, { testIdAttributeName: this._recorder.state.testIdAttributeName });
+    const generated = this._recorder.injectedScript.generateSelector(this._hoveredElement, { testIdAttributeName: this._recorder.state.testIdAttributeName, multiple: true });
+    const { selector, elements } = generated;
     if (this._hoveredModel && this._hoveredModel.selector === selector)
       return;
-    this._hoveredModel = selector ? { selector, elements, color: HighlightColors.action } : null;
+    this._hoveredModel = selector ? { ...generated, color: HighlightColors.action } : null;
     this._recorder.updateHighlight(this._hoveredModel, true);
+  }
+
+  private _selectorPayload(model: HighlightModelWithSelector): { selector: string, selectorCandidates?: actions.SelectorCandidate[] } {
+    return {
+      selector: model.selector,
+      selectorCandidates: model.selectorCandidates,
+    };
   }
 }
 
@@ -1507,6 +1515,7 @@ function consumeEvent(e: Event) {
 
 type HighlightModel = {
   selector?: string;
+  selectorCandidates?: actions.SelectorCandidate[];
   elements: Element[];
   color: string;
   tooltipText?: string;
