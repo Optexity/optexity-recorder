@@ -109,15 +109,18 @@ export class ContextRecorder extends EventEmitter {
         if (languageGenerator === this._orderedLanguages[0])
           this._throttledOutputFile?.setContent(source.text);
       }
-      try{
-        chrome.runtime.sendMessage({
-          type: 'OPTEXITY_EVAL_PAGE',
-          eval_page: actions[actions.length - 1].eval_page,
-          // content: actions[actions.length - 1].content,
-            file_id: actions[actions.length - 1].uuid,
+      const lastAction = actions.length > 0 ? actions[actions.length - 1] : null;
+      console.log('[ContextRecorder] change fired — actions:', actions.length, 'lastAction:', lastAction?.action.name, 'eval_page:', !!lastAction?.eval_page);
+      if (lastAction?.eval_page) {
+        try {
+          chrome.runtime.sendMessage({
+            type: 'OPTEXITY_EVAL_PAGE',
+            eval_page: lastAction.eval_page,
+            file_id: lastAction.uuid,
           });
-      } catch (error) {
-        console.log('error in generateCode : ', error);
+        } catch (error) {
+          console.log('error in generateCode : ', error);
+        }
       }
       this.emit(ContextRecorder.Events.Change, {
         sources: this._recorderSources,
@@ -303,16 +306,19 @@ export class ContextRecorder extends EventEmitter {
     const timestamp = new Date().getTime();
     const _uuid = timestamp.toString() + '_' + Math.random().toString(36).substring(2, 15);
     const frameDescription = await this._describeFrame(frame);
-    const { content, eval_page } = await this.get_eval_page(frame);
-    console.log('--------------------------------')
-    console.log('action in _createActionInContext : ', action);
 
+    let content = '';
+    let eval_page: { [key: string]: any } | undefined;
     try {
-      console.log('selector in _createActionInContext : ', action.selector);
-    } catch (e) {
-      console.log('Error: ', e);
+      const result = await this.get_eval_page(frame);
+      content = result.content;
+      eval_page = result.eval_page;
+    } catch (error) {
+      console.log('[ContextRecorder] get_eval_page failed for action', action.name, '— recording action without eval_page:', error);
     }
-    // console.log('eval_page : ', eval_page);
+
+    console.log('[ContextRecorder] creating ActionInContext:', action.name, '| eval_page present:', !!eval_page);
+
     const actionInContext: actions.ActionInContext = {
       frame: frameDescription,
       action,
