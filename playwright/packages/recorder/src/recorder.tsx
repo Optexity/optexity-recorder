@@ -132,7 +132,7 @@ const highlightPython = (code: string): React.ReactNode[] => {
   return parts.length > 0 ? parts : [<span key="code">{code}</span>];
 };
 
-const ActionCard: React.FC<{ index: number, message: string, code: string }> = ({ index, message, code }) => {
+const ActionCard: React.FC<{ index: number, message: string, code: string, isAssertion?: boolean }> = ({ index, message, code, isAssertion }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const highlightedCode = React.useMemo(() => highlightPython(code), [code]);
 
@@ -161,11 +161,11 @@ const ActionCard: React.FC<{ index: number, message: string, code: string }> = (
           width: 28,
           height: 28,
           borderRadius: '50%',
-          background: '#eef0ff',
+          background: isAssertion ? '#eef0ff' : '#eef0ff',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#ff462e',
+          color: isAssertion ? '#5b6dfa' : '#ff462e',
           fontWeight: 700,
           fontSize: 15,
           marginRight: 12,
@@ -274,12 +274,37 @@ export const Recorder: React.FC<RecorderProps> = ({
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
+  React.useEffect(() => {
+    console.log('[Recorder] mode changed:', mode);
+  }, [mode]);
+
+  React.useEffect(() => {
+    console.log('[Recorder] sources updated:', sources.map(s => ({ id: s.id, textLength: s.text?.length ?? 0 })));
+  }, [sources]);
+
+  React.useEffect(() => {
+    console.log('[Recorder] source text updated, length:', source.text?.length ?? 0);
+    if (source.text) console.log('[Recorder] source text preview:', source.text.slice(0, 300));
+  }, [source.text]);
+
   const actionCards = React.useMemo(() => {
     const lines = source.text.split('\n');
     let index = 1;
-    const cards: { index: number, message: string, code: string }[] = [];
+    const cards: { index: number, message: string, code: string, isAssertion?: boolean }[] = [];
     for (const [i, line] of lines.entries()) {
-      if (line.includes('.click(')) {
+      if (line.includes('.to_be_visible()')) {
+        cards.push({ index: index++, message: 'Assert element visible', code: line.split('# {"uuid":')[0].trim(), isAssertion: true });
+      }
+      else if (line.includes('.to_have_text(') || line.includes('.to_contain_text(')) {
+        cards.push({ index: index++, message: 'Assert element text', code: line.split('# {"uuid":')[0].trim(), isAssertion: true });
+      }
+      else if (line.includes('.to_have_value(')) {
+        cards.push({ index: index++, message: 'Assert element value', code: line.split('# {"uuid":')[0].trim(), isAssertion: true });
+      }
+      else if (line.includes('.to_be_checked()') || line.includes('.not_to_be_checked()')) {
+        cards.push({ index: index++, message: 'Assert checkbox state', code: line.split('# {"uuid":')[0].trim(), isAssertion: true });
+      }
+      else if (line.includes('.click(')) {
         cards.push({ index: index++, message: 'Click element action', code: line.split('# {"uuid":')[0].trim() });
       }
       else if (line.includes('.dblclick(')) {
@@ -298,6 +323,7 @@ export const Recorder: React.FC<RecorderProps> = ({
         cards.push({ index: index++, message: 'Uncheck checkbox action', code: line.split('# {"uuid":')[0].trim() });
       }
     }
+    console.log('[Recorder] actionCards computed:', cards.length, cards.map(c => c.message));
     return cards;
   }, [source.text]);
 
@@ -313,6 +339,13 @@ export const Recorder: React.FC<RecorderProps> = ({
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       switch (event.key) {
+        case 'Escape':
+          if (['assertingVisibility', 'assertingText', 'assertingValue', 'assertingSnapshot'].includes(mode)) {
+            console.log('[Recorder] Escape pressed — exiting assert mode, switching to recording');
+            event.preventDefault();
+            window.dispatch({ event: 'setMode', params: { mode: 'recording' } });
+          }
+          break;
         case 'F8':
           event.preventDefault();
           if (paused)
@@ -329,7 +362,7 @@ export const Recorder: React.FC<RecorderProps> = ({
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [paused]);
+  }, [paused, mode]);
 
   // Add click outside handler for dropdown
   React.useEffect(() => {
@@ -417,10 +450,54 @@ export const Recorder: React.FC<RecorderProps> = ({
       }}
     >
       {actionCards.map(card => (
-        <ActionCard key={card.index} index={card.index} message={card.message} code={card.code} />
+        <ActionCard key={card.index} index={card.index} message={card.message} code={card.code} isAssertion={card.isAssertion} />
       ))}
       <div ref={messagesEndRef} />
     </div>
+
+    {mode === 'assertingVisibility' && (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        background: '#eef0ff',
+        borderBottom: '2px solid #5b6dfa',
+        zIndex: 200,
+        padding: '12px 16px',
+        boxSizing: 'border-box',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 18 }}>👁️</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#5b6dfa' }}>Assert Visibility Mode</div>
+            <div style={{ fontSize: 12, color: '#4b5563' }}>Click any element on the page to assert it is visible</div>
+          </div>
+        </div>
+        <button
+          style={{
+            padding: '6px 14px',
+            fontSize: 12,
+            fontWeight: 600,
+            borderRadius: 8,
+            border: '1.5px solid #5b6dfa',
+            background: '#fff',
+            color: '#5b6dfa',
+            cursor: 'pointer',
+          }}
+          onClick={() => {
+            console.log('[Recorder] Assert mode cancelled via banner button');
+            window.dispatch({ event: 'setMode', params: { mode: 'recording' } });
+          }}
+        >
+          Cancel (Esc)
+        </button>
+      </div>
+    )}
     <div style={{
       width: '100%',
       padding: '20px 0 16px 0',
@@ -439,127 +516,50 @@ export const Recorder: React.FC<RecorderProps> = ({
       gap: 18,
       maxWidth: '100vw',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, maxWidth: 480, width: '100%', margin: '0 auto' }}>
-        {/* <ToolbarButton
-          icon={paused ? 'play' : 'debug-pause'}
-          title={paused ? 'Resume' : 'Pause'}
-          toggled={mode === 'recording' || mode === 'recording-inspecting' || mode === 'assertingText' || mode === 'assertingVisibility'}
-          onClick={() => {
-            window.dispatch({ event: 'setMode', params: { mode: mode === 'none' || mode === 'standby' || mode === 'inspecting' ? 'recording' : 'standby' } });
-          }}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, maxWidth: 480, width: '100%', margin: '0 auto' }}>
+        <ToolbarButton
+          icon="eye"
+          title="Assert visibility — click an element to record an assertion that it is visible"
+          toggled={mode === 'assertingVisibility'}
+          disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
           className="outline-button"
-          style={{ width: 140, minWidth: 0, minHeight: 48, fontWeight: 700, fontSize: 18, border: '1.5px solid #d1d5db', color: '#23272f', background: '#fff', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          style={{
+            width: '44%',
+            minWidth: 0,
+            minHeight: 48,
+            fontWeight: 700,
+            fontSize: 16,
+            border: `1.5px solid ${mode === 'assertingVisibility' ? '#5b6dfa' : '#d1d5db'}`,
+            color: mode === 'assertingVisibility' ? '#5b6dfa' : (mode === 'none' || mode === 'standby' || mode === 'inspecting' ? '#9ca3af' : '#23272f'),
+            background: mode === 'assertingVisibility' ? '#eef0ff' : '#fff',
+            borderRadius: 14,
+            boxShadow: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            cursor: (mode === 'none' || mode === 'standby' || mode === 'inspecting') ? 'not-allowed' : 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          onClick={() => {
+            if (mode === 'none' || mode === 'standby' || mode === 'inspecting') return;
+            const nextMode = mode === 'assertingVisibility' ? 'recording' : 'assertingVisibility';
+            console.log('[Recorder] Assert button clicked — switching from', mode, 'to', nextMode);
+            window.dispatch({ event: 'setMode', params: { mode: nextMode } });
+          }}
         >
-          {paused ? 'Resume' : 'Pause'}
-        </ToolbarButton> */}
+          Assert
+        </ToolbarButton>
         <ToolbarButton
           icon="trash"
           title="Delete"
           className="outline-button"
-          style={{ width: '60%', minWidth: 0, minHeight: 48, fontWeight: 700, fontSize: 18, border: '1.5px solid #d1d5db', color: '#23272f', background: '#fff', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          style={{ width: '44%', minWidth: 0, minHeight: 48, fontWeight: 700, fontSize: 16, border: '1.5px solid #d1d5db', color: '#23272f', background: '#fff', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
           onClick={() => setShowDeleteConfirmation(true)}
         >
-          Discard and Delete
+          Discard
         </ToolbarButton>
         {/* TODO: Add options functionality, DO NOT REMOVE */}
-        {/* <div className="dropdown" style={{ position: 'relative' }}>
-          <ToolbarButton
-            ref={moreBtnRef}
-            icon="more"
-            title="More options"
-            style={{ width: 60, minWidth: 0, minHeight: 48, fontSize: '22px', color: '#5b6dfa', background: '#fff', border: '1.5px solid #d1d5db', borderRadius: 14, boxShadow: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            onClick={(e) => {
-              e.stopPropagation();
-              const dropdownContent = e.currentTarget.nextElementSibling;
-              const isActive = e.currentTarget.classList.contains('active');
-              // Close all other dropdowns
-              document.querySelectorAll('.dropdown-content.show').forEach(el => {
-                if (el !== dropdownContent) el.classList.remove('show');
-              });
-              document.querySelectorAll('.toolbar-button.active').forEach(el => {
-                if (el !== e.currentTarget) el.classList.remove('active');
-              });
-              // Toggle current dropdown
-              if (dropdownContent) {
-                dropdownContent.classList.toggle('show');
-                e.currentTarget.classList.toggle('active');
-                // Position above the button
-                if (dropdownContent.classList.contains('show')) {
-                  const buttonRect = e.currentTarget.getBoundingClientRect();
-                  (dropdownContent as HTMLElement).style.bottom = `${buttonRect.height + 8}px`;
-                  (dropdownContent as HTMLElement).style.top = 'auto';
-                }
-              }
-            }}
-          />
-          <div ref={dropdownRef} className="dropdown-content" style={{ bottom: '52px', top: 'auto' }}>
-            <ToolbarButton
-              icon='inspect'
-              title='Pick locator'
-              toggled={mode === 'inspecting' || mode === 'recording-inspecting'}
-              onClick={() => {
-                const newMode = {
-                  'inspecting': 'standby',
-                  'none': 'inspecting',
-                  'standby': 'inspecting',
-                  'recording': 'recording-inspecting',
-                  'recording-inspecting': 'recording',
-                  'assertingText': 'recording-inspecting',
-                  'assertingVisibility': 'recording-inspecting',
-                  'assertingValue': 'recording-inspecting',
-                  'assertingSnapshot': 'recording-inspecting',
-                }[mode];
-                window.dispatch({ event: 'setMode', params: { mode: newMode } }).catch(() => { });
-              }}
-            >
-              Pick locator
-            </ToolbarButton>
-            <ToolbarButton
-              icon='eye'
-              title='Assert visibility'
-              toggled={mode === 'assertingVisibility'}
-              disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
-              onClick={() => {
-                window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingVisibility' ? 'recording' : 'assertingVisibility' } });
-              }}
-            >
-              Assert visibility
-            </ToolbarButton>
-            <ToolbarButton
-              icon='whole-word'
-              title='Assert text'
-              toggled={mode === 'assertingText'}
-              disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
-              onClick={() => {
-                window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingText' ? 'recording' : 'assertingText' } });
-              }}
-            >
-              Assert text
-            </ToolbarButton>
-            <ToolbarButton
-              icon='symbol-constant'
-              title='Assert value'
-              toggled={mode === 'assertingValue'}
-              disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
-              onClick={() => {
-                window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingValue' ? 'recording' : 'assertingValue' } });
-              }}
-            >
-              Assert value
-            </ToolbarButton>
-            <ToolbarButton
-              icon='gist'
-              title='Assert snapshot'
-              toggled={mode === 'assertingSnapshot'}
-              disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
-              onClick={() => {
-                window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingSnapshot' ? 'recording' : 'assertingSnapshot' } });
-              }}
-            >
-              Assert snapshot
-            </ToolbarButton>
-          </div>
-        </div> */}
       </div>
       <ToolbarButton
         icon="check"
