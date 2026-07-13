@@ -242,13 +242,36 @@ export class CrxTransport implements ConnectionTransport {
       Protocol.CommandReturnValues[T];
   }
 
-  private _onPopupCreated = async ({ openerTabId, id }: Tab) => {
-    if (!openerTabId || !id)
+  private _onPopupCreated = async ({ openerTabId, id, windowId }: Tab) => {
+    if (!id)
       return;
 
-    if (this._tabToTarget.has(openerTabId))
-      // it can fail due to "Cannot access a chrome:// URL"
-      await this.attach(id).catch(() => {});
+    // Common case: Chrome tells us the opener tab directly (new tab, or a same-window
+    // popup). This covers window.open() calls that open as a tab.
+    if (openerTabId) {
+      if (this._tabToTarget.has(openerTabId))
+        // it can fail due to "Cannot access a chrome:// URL"
+        await this.attach(id).catch(() => {});
+      return;
+    }
+
+    // Fallback for popups that open as a *separate window* (e.g. OAuth/login windows
+    // created via window.open() with window features). Chrome frequently omits
+    // openerTabId for these, so the tabs API alone can't link them to their opener.
+    // We only care about popup-type windows here; skip regular tabs/windows so we
+    // don't attach the debugger to unrelated browsing the user does while recording.
+    const window = windowId ? await chrome.windows.get(windowId).catch(() => undefined) : undefined;
+    if (window?.type !== 'popup')
+      return;
+
+    // Attach tentatively and rely on the CDP openerId (available via Target.getTargetInfo,
+    // the same field Playwright uses to record popups) to confirm the popup was opened by
+    // a tab we're already tracking. Detach again if it wasn't ours.
+    await this.attach(id, targetInfo => {
+      const openerId = targetInfo.openerId;
+      if (!openerId || !this._targetToTab.has(openerId))
+        throw new Error(`popup opener ${openerId ?? '<none>'} is not tracked`);
+    }).catch(() => chrome.debugger.detach({ tabId: id }).catch(() => {}));
   };
 
   private _onRemoved = (tabIdOrDebuggee: number | { tabId?: number }) => {
