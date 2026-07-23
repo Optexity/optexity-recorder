@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recorder blocks interaction — repro</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 24px 32px 80px; max-width: 760px; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  p.lead { color: #888; max-width: 640px; }
+  .case { border: 1px solid #ccc; border-radius: 10px; padding: 18px 20px; margin: 20px 0; }
+  .case h2 { font-size: 16px; margin: 0 0 4px; }
+  .case .desc { color: #888; font-size: 13px; margin: 0 0 14px; }
+  .case .why { color: #b26; font-size: 12px; margin: 10px 0 0; }
+  .real-btn { padding: 14px 26px; font-size: 15px; cursor: pointer; }
+  .stage { position: relative; display: inline-block; }
+  .field { width: 280px; height: 40px; box-sizing: border-box; padding: 6px 10px; font-size: 14px; }
+  code { background: #8883; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+  /* case 2: badge covering the center of the button (non-forwarding sibling) */
+  .badge { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+           width: 64px; height: 64px; border-radius: 50%; background: rgba(220,40,120,.15);
+           border: 2px solid #d28; pointer-events: auto; }
+  /* case 3: never-stable element */
+  @keyframes drift { 0%{transform:translateX(0)} 50%{transform:translateX(10px)} 100%{transform:translateX(0)} }
+  .drifting { animation: drift .8s ease-in-out infinite; }
+  /* case 5: transparent frame over a field, forwards focus */
+  .frame { position: absolute; inset: 0; background: rgba(0,0,0,.001); }
+
+  #log { position: fixed; right: 0; top: 0; bottom: 0; width: 300px; background: #111; color: #6f9;
+         font: 12px/1.55 ui-monospace, monospace; padding: 12px; overflow: auto; }
+  #log b { color: #fff; }
+  body { padding-right: 340px; }
+</style>
+</head>
+<body>
+<h1>Recorder blocks interaction — repro</h1>
+<p class="lead">
+  Every control below <b>works when you interact with it in a plain browser</b> (no extension): the green log fires.
+  The customer's bug is that <b>while the CRX recorder is attached and recording</b>, some of these controls go
+  <b>dead</b> — the click/keystroke does nothing and no green line appears.
+</p>
+<p class="lead">
+  <b>How to use:</b> (1) open in a normal tab, interact with each — confirm every one logs green.
+  (2) Attach the recorder, start recording, repeat. The cases that produce <b>no green line</b> are the repro.
+</p>
+<p class="lead" style="color:#b26;font-size:13px">
+  Mechanism: on click/press/check the recorder <b>swallows your native event</b> and re-performs it via
+  <code>frame.click(selector, {strict:true, timeout:5000})</code>. If that re-perform fails (ambiguous selector,
+  intercepted point, unstable element) the action is silently dropped — so the control never fires. Typing is
+  record-only, but a mismatched active target makes the recorder <b>consume the keystrokes</b>.
+</p>
+
+<div class="case">
+  <h2>0. Control — plain unique button</h2>
+  <p class="desc">Baseline. Should fire green both with and without the recorder. If this fails too, the recorder is broken globally, not per-field.</p>
+  <button class="real-btn" id="ok" data-log="button#ok fired (control)">Continue</button>
+</div>
+
+<div class="case">
+  <h2>1. Ambiguous selector → strict-mode violation</h2>
+  <p class="desc">Two buttons with the <b>same accessible name</b> and no distinguishing attributes. The recorder generates
+    <code>getByRole('button', { name: 'Continue' })</code>, which matches <b>both</b>.</p>
+  <button class="real-btn" id="dup-a" data-log="button#dup-a fired (LEFT Continue)">Continue</button>
+  <button class="real-btn" id="dup-b" data-log="button#dup-b fired (RIGHT Continue)" style="margin-left:12px">Continue</button>
+  <p class="why">Recorder: <code>strict mode violation: locator resolved to 2 elements</code> → click dropped → button dead. Plain browser: both work.</p>
+</div>
+
+<div class="case">
+  <h2>2. Overlay intercepts the click point</h2>
+  <p class="desc">A badge sits over the <b>center</b> of the button (a sibling, not forwarding). By hand you click the visible
+    label area (top-left) and it works. Playwright always clicks the element <b>center</b>.</p>
+  <div class="stage">
+    <button class="real-btn" id="covered" data-log="button#covered fired (Save changes)">Save&nbsp;changes&nbsp;&nbsp;&nbsp;&nbsp;</button>
+    <div class="badge" title="decorative badge over the center"></div>
+  </div>
+  <p class="why">Recorder: <code>&lt;div class="badge"&gt; intercepts pointer events</code> → click dropped → button dead. Plain browser: clicking the label works.</p>
+</div>
+
+<div class="case">
+  <h2>3. Never-stable (continuously animating) element</h2>
+  <p class="desc">The button drifts side to side forever. By hand you can still click it any time.</p>
+  <button class="real-btn drifting" id="moving" data-log="button#moving fired (animated)">Claim offer</button>
+  <p class="why">Recorder: waits for the element to stop moving; it never does → 5s timeout → click dropped → button dead. Plain browser: works.</p>
+</div>
+
+<div class="case">
+  <h2>4. Disabled-looking but clickable via handler</h2>
+  <p class="desc">A styled <code>&lt;div role="button"&gt;</code> whose only reliable target is its parent; the recorder may
+    resolve a selector that Playwright can't act on (not the same element, or not hit-testable at center).</p>
+  <div class="stage">
+    <div id="widget-wrap" style="display:inline-block;padding:6px">
+      <div role="button" tabindex="0" id="fancy" data-log="div#fancy fired (custom button)"
+           style="padding:14px 26px;border:1px solid #888;border-radius:8px;cursor:pointer;display:inline-block">
+        <span style="pointer-events:none">Add&nbsp;to&nbsp;cart</span>
+      </div>
+    </div>
+  </div>
+  <p class="why">Native click bubbles to the handler and fires. Recorder-generated selector / center hit-test can miss on custom widgets.</p>
+</div>
+
+<div class="case">
+  <h2>5. Text field under a focus-forwarding frame (fill blocked)</h2>
+  <p class="desc">A transparent frame covers the input and forwards focus on click, so by hand you can type fine.
+    Fill is record-only, so during recording the field is driven by <b>your own keystrokes</b> — but the recorder's
+    active target is the frame, not the input.</p>
+  <div class="stage">
+    <input class="field" type="text" id="email" placeholder="you@example.com" data-log="input#email got a keystroke">
+    <div class="frame" data-focus="email" title="frame layer"></div>
+  </div>
+  <p class="why">Recorder: keystroke target (input) ≠ active model (frame) → keystrokes consumed → can't type. Plain browser: typing works.</p>
+</div>
+
+<div id="log"><b>activity log</b><br>interact with the controls…<br></div>
+
+<script>
+  const log = document.getElementById('log');
+  function line(msg) {
+    const d = document.createElement('div');
+    d.textContent = '✔ ' + msg;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+  }
+  // Instrument every control marked with data-log so you can see the UNDERLYING action fire.
+  document.querySelectorAll('[data-log]').forEach(el => {
+    const msg = el.dataset.log;
+    if (el.tagName === 'INPUT')
+      el.addEventListener('input', () => line(msg + ' = "' + el.value + '"'));
+    else
+      el.addEventListener('click', () => line(msg));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') line(msg + ' (key)'); });
+  });
+  // Case 5: frame forwards focus to the field so typing-by-hand works.
+  document.querySelectorAll('[data-focus]').forEach(o =>
+    o.addEventListener('click', () => document.getElementById(o.dataset.focus).focus()));
+</script>
+</body>
+</html>

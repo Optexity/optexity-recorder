@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GWT readonly search field repro</title>
+<style>
+  body { font: 14px system-ui, sans-serif; padding: 24px; }
+  .gwt-TextBox { width: 280px; height: 24px; padding: 4px 6px; font-size: 14px; }
+  .gwt-TextBox-readonly { background: #f3f3f3; }
+  #log { margin-top: 20px; font: 12px ui-monospace, monospace; color: #060; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>GWT readonly search field</h1>
+<p>Mirrors the customer field: a <code>readonly</code> GWT text box that becomes editable when clicked, so you type inline.</p>
+
+<table optexity-bid="t1"><tbody><tr>
+  <td width="100%">
+    <div>
+      <input type="text" class="gwt-TextBox textBoxHeight GGO0QWGJ3C gwt-TextBox-readonly"
+             id="CMS_SEARCH_DRIVER_CMS_SEARCH" optexity-bid="db12e425" readonly="">
+    </div>
+  </td>
+  <td><img alt="Required Field" height="18" src="x" width="9" style="display:none"></td>
+  <td><img class="gwt-Image" alt="What is this?" src="x" aria-hidden="true" style="display:none"></td>
+</tr></tbody></table>
+
+<div id="log">activity log:\n</div>
+
+<script>
+  const log = document.getElementById('log');
+  function line(m){ log.textContent += m + '\n'; }
+  const inp = document.getElementById('CMS_SEARCH_DRIVER_CMS_SEARCH');
+  // GWT SuggestBox-style: readonly until clicked; click enables + focuses so you type inline.
+  inp.addEventListener('mousedown', () => { inp.removeAttribute('readonly'); inp.classList.remove('gwt-TextBox-readonly'); line('mousedown -> readonly removed'); });
+  inp.addEventListener('click', () => line('click fired'));
+  inp.addEventListener('focus', () => line('focus fired'));
+  inp.addEventListener('input', () => line('input = "' + inp.value + '"'));
+</script>
+</body>
+</html>
