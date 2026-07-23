@@ -74,7 +74,14 @@ export class RecorderCollection extends EventEmitter {
     }
 
     // DID this so that bid is assigned first to actionInContext
-    await callback?.().catch();
+    // NOTE: temporary diagnostics - surface why a recorded action fails to perform
+    // (e.g. strict-mode violation, "intercepts pointer events", timeout) instead of
+    // silently swallowing it, which looks like "nothing happens" while recording.
+    await callback?.().catch((e: any) => {
+      const action: any = actionInContext.action;
+      // eslint-disable-next-line no-console
+      console.error('[optexity-recorder] failed to perform', action?.name, 'selector:', action?.selector, '->', e?.message || e);
+    });
     this._actions.push(actionInContext);
     this._fireChange();    
     actionInContext.endTime = monotonicTime();
