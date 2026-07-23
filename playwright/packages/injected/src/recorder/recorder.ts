@@ -370,9 +370,6 @@ class RecordActionTool implements RecorderTool {
 
   onInput(event: Event) {
     const target = this._recorder.deepEventTarget(event);
-    // eslint-disable-next-line no-console
-    console.log('[opx] onInput target=', target.nodeName + '#' + (target as HTMLElement).id,
-        'readonly=', (target as HTMLInputElement).readOnly, 'value=', (target as HTMLInputElement).value);
 
     if (target.nodeName === 'INPUT' && (target as HTMLInputElement).type.toLowerCase() === 'file') {
       this._recorder.recordAction({
@@ -427,11 +424,6 @@ class RecordActionTool implements RecorderTool {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    const _t = this._recorder.deepEventTarget(event) as HTMLInputElement;
-    const _ae = deepActiveElement(this._recorder.document) as HTMLInputElement | null;
-    // eslint-disable-next-line no-console
-    console.log('[opx] onKeyDown key=', event.key, 'target=', _t.nodeName + '#' + _t.id,
-        'readonly=', _t.readOnly, 'activeElement=', _ae ? (_ae.tagName + '#' + _ae.id) : null);
     if (!this._shouldGenerateKeyPressFor(event))
       return;
     if (this._actionInProgress(event)) {
@@ -538,8 +530,6 @@ class RecordActionTool implements RecorderTool {
   }
 
   private _performAction(action: actions.PerformOnRecordAction) {
-    // eslint-disable-next-line no-console
-    console.log('[opx] performAction', action.name, 'selector=', (action as any).selector);
     this._hoveredElement = null;
     this._hoveredModel = null;
     this._activeModel = null;
@@ -547,10 +537,6 @@ class RecordActionTool implements RecorderTool {
     this._performingActions.add(action);
     void this._recorder.performAction(action).then(() => {
       this._performingActions.delete(action);
-      const ae = deepActiveElement(this._recorder.document) as HTMLInputElement | null;
-      // eslint-disable-next-line no-console
-      console.log('[opx] after', action.name, '-> activeElement=', ae ? (ae.tagName + '#' + ae.id) : null,
-          'readonly=', ae ? ae.readOnly : null, 'disabled=', ae ? (ae as any).disabled : null);
 
       // If that was a keyboard action, it similarly requires new selectors for active model.
       this._onFocus(false);
