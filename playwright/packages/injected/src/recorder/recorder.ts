@@ -244,11 +244,14 @@ class RecordActionTool implements RecorderTool {
 
     // Stall click in case we are observing double-click.
     if (event.detail === 1) {
+      const _pos = positionForEvent(event, this._hoveredModel!.elements[0]);
+      // eslint-disable-next-line no-console
+      console.log('[opx] click selector=', this._hoveredModel!.selector, 'computedPosition=', JSON.stringify(_pos));
       this._pendingClickAction = {
         action: {
           name: 'click',
           selector: this._hoveredModel!.selector,
-          position: positionForEvent(event, this._hoveredModel!.elements[0]),
+          position: _pos,
           signals: [],
           button: buttonForEvent(event),
           modifiers: modifiersForEvent(event),

@@ -47,9 +47,16 @@ export async function performAction(pageAliases: Map<Page, string>, actionInCont
 
   if (action.name === 'click') {
     const options = toClickOptions(action);
-    const bid = await mainFrame.click(callMetadata, selector, { ...options, timeout: kActionTimeout, strict: true });
-    if (bid) {
-      actionInContext.optexityBid = bid;
+    // eslint-disable-next-line no-console
+    console.log('[opx-srv] click selector=', selector, 'position=', JSON.stringify(options.position));
+    try {
+      const bid = await mainFrame.click(callMetadata, selector, { ...options, timeout: kActionTimeout, strict: true });
+      if (bid)
+        actionInContext.optexityBid = bid;
+    } catch (e: any) {
+      // eslint-disable-next-line no-console
+      console.error('[opx-srv] click FAILED selector=', selector, 'position=', JSON.stringify(options.position), '->', (e?.message || e));
+      throw e;
     }
     return;
   }
