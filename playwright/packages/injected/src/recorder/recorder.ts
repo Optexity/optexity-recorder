@@ -248,7 +248,7 @@ class RecordActionTool implements RecorderTool {
         action: {
           name: 'click',
           selector: this._hoveredModel!.selector,
-          position: positionForEvent(event),
+          position: positionForEvent(event, this._hoveredModel!.elements[0]),
           signals: [],
           button: buttonForEvent(event),
           modifiers: modifiersForEvent(event),
@@ -275,7 +275,7 @@ class RecordActionTool implements RecorderTool {
     this._performAction({
       name: 'click',
       selector: this._hoveredModel!.selector,
-      position: positionForEvent(event),
+      position: positionForEvent(event, this._hoveredModel!.elements[0]),
       signals: [],
       button: buttonForEvent(event),
       modifiers: modifiersForEvent(event),
@@ -310,7 +310,7 @@ class RecordActionTool implements RecorderTool {
     this._performAction({
       name: 'click',
       selector: this._hoveredModel!.selector,
-      position: positionForEvent(event),
+      position: positionForEvent(event, this._hoveredModel!.elements[0]),
       signals: [],
       button: 'right',
       modifiers: 0,
@@ -1489,14 +1489,44 @@ function buttonForEvent(event: MouseEvent): 'left' | 'middle' | 'right' {
   return 'left';
 }
 
-function positionForEvent(event: MouseEvent): Point |undefined {
-  const targetElement = (event.target as HTMLElement);
-  if (targetElement.nodeName !== 'CANVAS')
+function positionForEvent(event: MouseEvent, actionElement?: Element): Point | undefined {
+  const eventTarget = (event.target as HTMLElement);
+  // Canvas has no meaningful sub-selector, so we always record the exact point.
+  if (eventTarget.nodeName === 'CANVAS') {
+    return {
+      x: event.offsetX,
+      y: event.offsetY,
+    };
+  }
+  // For every other element we normally omit the position and let the action click the
+  // element's center. But some sites place a non-forwarding element (a badge, ribbon,
+  // sticky bar, tracking layer) over the *center* of a control. A center click while
+  // recording then lands on that overlay and Playwright rejects it with "intercepts
+  // pointer events", so the recorded click is silently dropped and the control never
+  // fires - even though the user clicked an uncovered part of it by hand. Detect that
+  // case and record the actual pixel the user clicked so the click lands where they
+  // demonstrably could reach it. Clicks whose center is reachable stay position-less.
+  const element = actionElement as HTMLElement | undefined;
+  if (!element || element.nodeType !== Node.ELEMENT_NODE)
     return;
-  return {
-    x: event.offsetX,
-    y: event.offsetY,
-  };
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0)
+    return;
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const atCenter = element.ownerDocument.elementFromPoint(cx, cy);
+  // Nothing there, or the recorder's own layer - keep the clean, center click.
+  if (!atCenter || (atCenter.nodeName || '').toLowerCase() === 'x-pw-glass')
+    return;
+  // Center is reachable (the element itself or one of its descendants) - keep it clean.
+  if (atCenter === element || element.contains(atCenter))
+    return;
+  // Center is obstructed by a foreign element. Record where the user actually clicked.
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  if (x < 0 || y < 0 || x > rect.width || y > rect.height)
+    return;
+  return { x, y };
 }
 
 function consumeEvent(e: Event) {
