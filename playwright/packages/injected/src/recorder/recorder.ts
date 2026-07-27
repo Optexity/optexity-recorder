@@ -414,9 +414,23 @@ class RecordActionTool implements RecorderTool {
       const selectElement = target as HTMLSelectElement;
       if (this._actionInProgress(event))
         return;
+      // A <select> is ignored by the mouse handlers (see _shouldIgnoreMouseEvent), so
+      // _activeModel is frequently never set for it. Using this._activeModel!.selector then
+      // throws "Cannot read properties of null (reading 'selector')", which aborts onInput
+      // before the select is performed - and since _actionInProgress() already consumed the
+      // native change event, the page's own change handler never runs either (e.g. a GWT
+      // ListBox that enables a dependent field). Resolve the selector defensively so we
+      // always perform the select and never crash.
+      let selector = this._activeModel?.selector ?? this._hoveredModel?.selector;
+      if (!selector) {
+        const generated = this._recorder.injectedScript.generateSelector(selectElement, { testIdAttributeName: this._recorder.state.testIdAttributeName });
+        selector = generated.selector;
+      }
+      if (!selector)
+        return;
       this._performAction({
         name: 'select',
-        selector: this._activeModel!.selector,
+        selector,
         options: [...selectElement.selectedOptions].map(option => option.value),
         signals: []
       });
@@ -501,10 +515,17 @@ class RecordActionTool implements RecorderTool {
     // If Playwright is performing action for us, bail.
     const isKeyEvent = event instanceof KeyboardEvent;
     const isMouseOrPointerEvent = event instanceof MouseEvent || event instanceof PointerEvent;
+    const isChangeEvent = event.type === 'input' || event.type === 'change';
     for (const action of this._performingActions) {
       if (isKeyEvent && action.name === 'press' && event.key === action.key)
         return true;
       if (isMouseOrPointerEvent && (action.name === 'click' || action.name === 'check' || action.name === 'uncheck'))
+        return true;
+      // A performed select re-dispatches input/change; treat those as in-progress so we do
+      // NOT consume them. Otherwise stopImmediatePropagation() would keep the page's own
+      // change handler from running (e.g. a GWT ListBox that enables a dependent field),
+      // leaving that field stuck even though the selection succeeded.
+      if (isChangeEvent && action.name === 'select')
         return true;
       // if (isKeyEvent && action.name === 'fill' && event.key === action.text)
       //   return true;
