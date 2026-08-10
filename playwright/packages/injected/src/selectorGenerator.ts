@@ -27,6 +27,7 @@ type SelectorToken = {
   engine: string;
   selector: string;
   score: number;  // Lower is better.
+  forceBreak?: boolean;
 };
 
 type Cache = {
@@ -196,13 +197,16 @@ function generateSelectorFor(cache: Cache, injectedScript: InjectedScript, targe
         const parentTokens = calculateCached(parent, allowParentText);
         if (!parentTokens)
           continue;
+        const shadowBoundary = element.parentNode?.nodeType === 11 && (element.parentNode as ShadowRoot).host === parent;
         // Even the best selector won't be too good - skip this parent.
-        if (result && combineScores([...parentTokens, ...bestPossibleInParent]) >= combineScores(result))
+        if (result && combineScores([...parentTokens, ...(shadowBoundary ? [{ ...bestPossibleInParent[0], forceBreak: true }, ...bestPossibleInParent.slice(1)] : bestPossibleInParent)]) >= combineScores(result))
           continue;
         // Update the best candidate that finds "element" in the "parent".
         bestPossibleInParent = chooseFirstSelector(injectedScript, parent, element, candidates, allowNthMatch);
         if (!bestPossibleInParent)
           return;
+        if (shadowBoundary)
+          bestPossibleInParent = [{ ...bestPossibleInParent[0], forceBreak: true }, ...bestPossibleInParent.slice(1)];
         const combined = [...parentTokens, ...bestPossibleInParent];
         if (!result || combineScores(combined) < combineScores(result))
           result = combined;
@@ -373,13 +377,15 @@ function hasCSSIdToken(tokens: SelectorToken[]) {
 
 function cssFallback(injectedScript: InjectedScript, targetElement: Element, options: InternalOptions): SelectorToken[] {
   const root: Node = options.root ?? targetElement.ownerDocument;
-  const tokens: string[] = [];
+  type CSSPathToken = { selector: string, separator: string };
+  const tokens: CSSPathToken[] = [];
+  let separator = '';
 
   function uniqueCSSSelector(prefix?: string): string | undefined {
     const path = tokens.slice();
     if (prefix)
-      path.unshift(prefix);
-    const selector = path.join(' > ');
+      path.unshift({ selector: prefix, separator: '' });
+    const selector = path.map((token, index) => index ? token.separator + token.selector : token.selector).join('');
     const parsedSelector = injectedScript.parseSelector(selector);
     const node = injectedScript.querySelector(parsedSelector, root, false);
     return node === targetElement ? selector : undefined;
@@ -439,7 +445,8 @@ function cssFallback(injectedScript: InjectedScript, targetElement: Element, opt
     } else if (!bestTokenForLevel) {
       bestTokenForLevel = cssEscape(nodeName);
     }
-    tokens.unshift(bestTokenForLevel);
+    tokens.unshift({ selector: bestTokenForLevel, separator });
+    separator = element.parentNode?.nodeType === 11 && (element.parentNode as ShadowRoot).host ? ' >> ' : ' > ';
   }
   return makeStrict(uniqueCSSSelector()!);
 }
@@ -456,8 +463,8 @@ function penalizeScoreForLength(groups: SelectorToken[][]) {
 function joinTokens(tokens: SelectorToken[]): string {
   const parts = [];
   let lastEngine = '';
-  for (const { engine, selector } of tokens) {
-    if (parts.length  && (lastEngine !== 'css' || engine !== 'css' || selector.startsWith(':nth-match(')))
+  for (const { engine, selector, forceBreak } of tokens) {
+    if (parts.length && (forceBreak || lastEngine !== 'css' || engine !== 'css' || selector.startsWith(':nth-match(')))
       parts.push('>>');
     lastEngine = engine;
     if (engine === 'css')
