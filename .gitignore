@@ -8,6 +8,7 @@ lib/
 # testing
 **/coverage
 
+
 # build
 **/dist
 **/build
@@ -208,3 +209,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+## local AI setup
+.claude
+
+# scratch repros, not part of the shipped repo
+/repro

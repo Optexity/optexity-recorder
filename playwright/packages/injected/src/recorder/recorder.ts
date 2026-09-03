@@ -225,6 +225,8 @@ class RecordActionTool implements RecorderTool {
       return;
     if (this._actionInProgress(event))
       return;
+    // A page's own mousedown/pointerdown handler may have revealed a different real target underneath an overlay since the last mousemove - refresh before trusting _hoveredModel.
+    this._refreshHoveredElement(event);
     if (this._consumedDueToNoModel(event, this._hoveredModel))
       return;
 
@@ -267,6 +269,7 @@ class RecordActionTool implements RecorderTool {
     // Only allow double click dispatch while action is in progress.
     if (this._actionInProgress(event))
       return;
+    this._refreshHoveredElement(event);
     if (this._consumedDueToNoModel(event, this._hoveredModel))
       return;
 
@@ -303,6 +306,7 @@ class RecordActionTool implements RecorderTool {
       return;
     if (this._actionInProgress(event))
       return;
+    this._refreshHoveredElement(event);
     if (this._consumedDueToNoModel(event, this._hoveredModel))
       return;
 
@@ -322,7 +326,7 @@ class RecordActionTool implements RecorderTool {
     if (this._shouldIgnoreMouseEvent(event))
       return;
     if (!this._performingActions.size)
-      consumeEvent(event);
+      preventDefaultOnly(event);
   }
 
   onPointerUp(event: PointerEvent) {
@@ -336,7 +340,7 @@ class RecordActionTool implements RecorderTool {
     if (this._shouldIgnoreMouseEvent(event))
       return;
     if (!this._performingActions.size)
-      consumeEvent(event);
+      preventDefaultOnly(event);
     this._activeModel = this._hoveredModel;
   }
 
@@ -348,11 +352,7 @@ class RecordActionTool implements RecorderTool {
   }
 
   onMouseMove(event: MouseEvent) {
-    const target = this._recorder.deepEventTarget(event);
-    if (this._hoveredElement === target)
-      return;
-    this._hoveredElement = target;
-    this._updateModelForHoveredElement();
+    this._refreshHoveredElement(event);
   }
 
   onMouseLeave(event: MouseEvent) {
@@ -599,6 +599,14 @@ class RecordActionTool implements RecorderTool {
     if (event.key.length === 1 && !hasModifier)
       return !!asCheckbox(this._recorder.deepEventTarget(event));
     return true;
+  }
+
+  private _refreshHoveredElement(event: Event) {
+    const target = this._recorder.deepEventTarget(event);
+    if (this._hoveredElement === target)
+      return;
+    this._hoveredElement = target;
+    this._updateModelForHoveredElement();
   }
 
   private _updateModelForHoveredElement() {
@@ -1554,6 +1562,11 @@ function consumeEvent(e: Event) {
   e.preventDefault();
   e.stopPropagation();
   e.stopImmediatePropagation();
+}
+
+// Prevent only the default action; keep bubbling for the page's own handlers.
+function preventDefaultOnly(e: Event) {
+  e.preventDefault();
 }
 
 type HighlightModel = {
