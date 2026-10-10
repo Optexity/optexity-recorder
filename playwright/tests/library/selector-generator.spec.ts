@@ -377,6 +377,29 @@ it.describe('selector generator', () => {
     expect(await generate(page, 'input[value=foo]')).toBe('internal:role=textbox >> nth=2');
   });
 
+  it('should traverse out of shadow roots when selecting elements in open shadow DOM', async ({ page }) => {
+    const result = await page.evaluate(() => {
+      const host1 = document.createElement('span');
+      const host2 = document.createElement('span');
+      document.body.append(host1, host2);
+      const shadow1 = host1.attachShadow({ mode: 'open' });
+      const shadow2 = host2.attachShadow({ mode: 'open' });
+      const button1 = document.createElement('button');
+      button1.textContent = 'Click';
+      const button2 = document.createElement('button');
+      button2.textContent = 'Click';
+      shadow1.appendChild(button1);
+      shadow2.appendChild(button2);
+      const injected = (window as any).__injectedScript;
+      const selector = injected.generateSelector(button2, { multiple: false, testIdAttributeName: 'data-testid' }).selector;
+      const parsed = injected.parseSelector(selector);
+      const found = injected.querySelectorAll(parsed, document);
+      return { selector, valid: found.length === 1 && found[0] === button2 };
+    });
+    expect(result.selector).toContain('>>');
+    expect(result.valid).toBe(true);
+  });
+
   it('should work in dynamic iframes without navigation', async ({ page }) => {
     await page.setContent(`<div></div>`);
     const [frame] = await Promise.all([
